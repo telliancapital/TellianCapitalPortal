@@ -31,7 +31,7 @@ export default function LoginPage() {
         style={{ height: "200px" }}
       >
         <img
-          src="/assets/login-hero.jpg"
+          src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
         />
@@ -43,7 +43,7 @@ export default function LoginPage() {
         style={{ height: "40vh" }}
       >
         <img
-          src="/assets/login-hero.jpg"
+          src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
         />
@@ -52,7 +52,7 @@ export default function LoginPage() {
       {/* Desktop: left half */}
       <div className="hidden lg:block lg:w-1/2 lg:min-h-screen overflow-hidden">
         <img
-          src="/assets/login-hero.jpg"
+          src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
         />
@@ -84,7 +84,21 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* 2. Headline */}
+          {/* 2. Eyebrow + Headline + Subtext */}
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "10px",
+              fontWeight: 500,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: "var(--tellian-stone)",
+              display: "block",
+              marginTop: "48px",
+            }}
+          >
+            Mandanten-Portal
+          </span>
           <h1
             style={{
               fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
@@ -92,12 +106,28 @@ export default function LoginPage() {
               fontWeight: 300,
               color: "var(--tellian-dark)",
               margin: 0,
-              marginTop: "48px",
+              marginTop: "16px",
               lineHeight: 1.1,
             }}
           >
-            Mandanten-Portal
+            Willkommen
+            <br />
+            <em style={{ fontStyle: "italic", fontWeight: 300 }}>zurück.</em>
           </h1>
+          <p
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "14px",
+              fontWeight: 400,
+              color: "var(--tellian-stone)",
+              lineHeight: 1.6,
+              marginTop: "20px",
+              marginBottom: 0,
+              maxWidth: "340px",
+            }}
+          >
+            Melden Sie sich an, um auf Ihre Performance-Reports und Quartalsberichte zuzugreifen.
+          </p>
 
           {/* 3. Form — underline inputs matching website contact section */}
           <form onSubmit={handleSubmit} style={{ marginTop: "64px" }}>
