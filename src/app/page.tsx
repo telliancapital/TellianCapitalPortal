@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { TellianLogo } from "@/components/TellianLogo";
+import { useAuth } from "@/lib/auth";
 
-// TODO: protect with Supabase Auth middleware
-// Users without session should be redirected to /login
+// TODO: replace mock auth guard with real Supabase middleware
 
 export default function DocumentsPage() {
+  const { isAuthenticated, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) router.push("/login");
+  }, [isAuthenticated, router]);
   // TODO: fetch documents from Supabase Storage
   // const { data } = await supabase.storage.from("docs").list(userId);
   const documents = [
@@ -13,6 +21,8 @@ export default function DocumentsPage() {
     { name: "Vermögensübersicht 2025.pdf", date: "2026-01-15" },
     { name: "Mandatsvertrag.pdf", date: "2025-06-01" },
   ];
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -34,7 +44,7 @@ export default function DocumentsPage() {
             border: "none",
             cursor: "pointer",
           }}
-          // TODO: supabase.auth.signOut() then redirect to /login
+          onClick={() => { logout(); router.push("/login"); }}
         >
           Abmelden
         </button>

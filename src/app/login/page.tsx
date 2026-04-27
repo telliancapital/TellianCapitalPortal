@@ -1,24 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { TellianLogo } from "@/components/TellianLogo";
+import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
+    // TODO: replace with real auth (Supabase signInWithPassword)
     await new Promise((r) => setTimeout(r, 1500));
     console.log(`Login submitted: ${email}`);
-    setError("E-Mail oder Passwort ungültig.");
-    setLoading(false);
+    login();
+    router.push("/");
   }
 
   return (
