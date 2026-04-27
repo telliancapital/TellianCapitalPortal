@@ -3,9 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
 
   useEffect(() => {
@@ -39,27 +42,30 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         >
           Tellian Capital
         </span>
-        <button
-          onClick={() => {
-            logout();
-            router.push("/login");
-          }}
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "13px",
-            fontWeight: 400,
-            color: "var(--tellian-stone)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--tellian-dark)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tellian-stone)")}
-        >
-          Abmelden
-        </button>
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => {
+              logout();
+              router.push("/login");
+            }}
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "var(--tellian-stone)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--tellian-dark)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--tellian-stone)")}
+          >
+            {t("portal.logout")}
+          </button>
+          <LanguageToggle />
+        </div>
       </header>
 
       {/* Content */}

@@ -2,6 +2,7 @@
 
 import { ArrowDownToLine, FileText } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
+import { useI18n } from "@/lib/i18n";
 
 // TODO: replace with backend call (Supabase Storage list)
 
@@ -27,8 +28,8 @@ const MOCK_DOCUMENTS: Document[] = [
   { id: "10", title: "Q3 2024 Performance-Report",   type: "Quartalsbericht", date: new Date("2024-10-10"), fileSize: "2.2 MB", fileFormat: "PDF" },
 ];
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("de-CH", {
+function formatDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale === "de" ? "de-CH" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -36,6 +37,7 @@ function formatDate(date: Date): string {
 }
 
 export default function DocumentsPage() {
+  const { t, locale } = useI18n();
   const documents = MOCK_DOCUMENTS;
 
   return (
@@ -58,7 +60,7 @@ export default function DocumentsPage() {
             margin: 0,
           }}
         >
-          Ihre Berichte
+          {t("docs.headline")}
         </h1>
         <p
           style={{
@@ -70,7 +72,7 @@ export default function DocumentsPage() {
             marginBottom: 0,
           }}
         >
-          {documents.length} Dokumente verfügbar
+          {t("docs.count", { n: documents.length })}
         </p>
       </div>
 
@@ -78,17 +80,17 @@ export default function DocumentsPage() {
       {documents.length > 0 ? (
         <div style={{ borderTop: "1px solid var(--tellian-line)", borderBottom: "1px solid var(--tellian-line)" }}>
           {documents.map((doc) => (
-            <DocumentRow key={doc.id} doc={doc} />
+            <DocumentRow key={doc.id} doc={doc} locale={locale} t={t} />
           ))}
         </div>
       ) : (
-        <EmptyState />
+        <EmptyState t={t} />
       )}
     </PortalLayout>
   );
 }
 
-function DocumentRow({ doc }: { doc: Document }) {
+function DocumentRow({ doc, locale, t }: { doc: Document; locale: string; t: (key: any, vars?: any) => string }) {
   function handleClick() {
     // TODO: replace with signed URL download from Supabase Storage
     console.log(`Downloading: ${doc.title}`);
@@ -139,7 +141,7 @@ function DocumentRow({ doc }: { doc: Document }) {
             color: "var(--tellian-stone)",
           }}
         >
-          {doc.type} · {formatDate(doc.date)}
+          {t(`type.${doc.type}` as any)} · {formatDate(doc.date, locale)}
         </span>
         <div className="flex items-center gap-4 shrink-0">
           <span
@@ -163,7 +165,7 @@ function DocumentRow({ doc }: { doc: Document }) {
   );
 }
 
-function EmptyState() {
+function EmptyState({ t }: { t: (key: any) => string }) {
   return (
     <div
       className="flex flex-col items-center text-center"
@@ -183,7 +185,7 @@ function EmptyState() {
           marginTop: "24px",
         }}
       >
-        Keine Berichte verfügbar.
+        {t("docs.empty.headline")}
       </h2>
       <p
         style={{
@@ -197,7 +199,7 @@ function EmptyState() {
           maxWidth: "400px",
         }}
       >
-        Sobald neue Dokumente bereitstehen, werden sie hier angezeigt.
+        {t("docs.empty.subtitle")}
       </p>
     </div>
   );
