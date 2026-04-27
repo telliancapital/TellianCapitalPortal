@@ -50,7 +50,7 @@ export default function DocumentsPage() {
         <h1
           style={{
             fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-            fontSize: "clamp(40px, 5vw, 56px)",
+            fontSize: "clamp(36px, 5vw, 56px)",
             fontWeight: 300,
             color: "var(--tellian-dark)",
             letterSpacing: "-0.02em",
@@ -100,16 +100,14 @@ function DocumentRow({ doc }: { doc: Document }) {
       className="w-full text-left group"
       style={{
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: "16px",
+        gap: "6px 16px",
         padding: "24px 0",
-        borderBottom: "1px solid var(--tellian-line)",
         background: "transparent",
         border: "none",
-        borderBottomWidth: "1px",
-        borderBottomStyle: "solid",
-        borderBottomColor: "var(--tellian-line)",
+        borderBottom: "1px solid var(--tellian-line)",
         cursor: "pointer",
         width: "100%",
         transition: "background-color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
@@ -117,20 +115,22 @@ function DocumentRow({ doc }: { doc: Document }) {
       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--tellian-bg-secondary)")}
       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
     >
-      {/* Left: info group */}
-      <div className="flex flex-col gap-1.5 min-w-0">
-        <span
-          className="truncate"
-          style={{
-            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-            fontSize: "22px",
-            fontWeight: 400,
-            color: "var(--tellian-dark)",
-            lineHeight: 1.3,
-          }}
-        >
-          {doc.title}
-        </span>
+      {/* Title — full width on mobile, shrinks on desktop */}
+      <span
+        className="truncate w-full sm:w-auto sm:flex-1 sm:min-w-0"
+        style={{
+          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+          fontSize: "22px",
+          fontWeight: 400,
+          color: "var(--tellian-dark)",
+          lineHeight: 1.3,
+        }}
+      >
+        {doc.title}
+      </span>
+
+      {/* Meta row — wraps below title on mobile, stays right on desktop */}
+      <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end sm:shrink-0 gap-4">
         <span
           style={{
             fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -141,25 +141,23 @@ function DocumentRow({ doc }: { doc: Document }) {
         >
           {doc.type} · {formatDate(doc.date)}
         </span>
-      </div>
-
-      {/* Right: file info + download icon */}
-      <div className="flex items-center gap-4 shrink-0">
-        <span
-          className="hidden sm:inline"
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "13px",
-            fontWeight: 400,
-            color: "var(--tellian-muted)",
-          }}
-        >
-          {doc.fileFormat} · {doc.fileSize}
-        </span>
-        <ArrowDownToLine
-          size={18}
-          className="text-tellian-stone group-hover:text-tellian-dark transition-colors duration-200"
-        />
+        <div className="flex items-center gap-4 shrink-0">
+          <span
+            className="hidden md:inline"
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "var(--tellian-muted)",
+            }}
+          >
+            {doc.fileFormat} · {doc.fileSize}
+          </span>
+          <ArrowDownToLine
+            size={18}
+            className="text-tellian-stone group-hover:text-tellian-dark transition-colors duration-200"
+          />
+        </div>
       </div>
     </button>
   );
