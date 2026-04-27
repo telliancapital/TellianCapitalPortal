@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { TellianLogo } from "@/components/TellianLogo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,6 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    // Mock — simulate auth delay, log to console
     await new Promise((r) => setTimeout(r, 1500));
     console.log(`Login submitted: ${email}`);
     setError("E-Mail oder Passwort ungültig.");
@@ -24,27 +24,38 @@ export default function LoginPage() {
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-screen">
       {/* ── Left: Image ── */}
-      {/* TODO: Asset wählen aus src/assets/ (Schweizer Berge, See, editorial) */}
 
-      {/* Mobile: small banner (200px) */}
+      {/* Mobile: small banner */}
       <div
-        className="block md:hidden w-full"
-        style={{ height: "200px", backgroundColor: "var(--tellian-bg-secondary)" }}
-      />
-
-      {/* Tablet: image strip (40vh) */}
-      <div
-        className="hidden md:block lg:hidden w-full"
-        style={{ height: "40vh", backgroundColor: "var(--tellian-bg-secondary)" }}
-      />
-
-      {/* Desktop: left half (50%) */}
-      <div
-        className="hidden lg:block lg:w-1/2 lg:min-h-screen"
-        style={{ backgroundColor: "var(--tellian-bg-secondary)" }}
+        className="block md:hidden w-full overflow-hidden"
+        style={{ height: "200px" }}
       >
-        {/* When asset is chosen:
-            <img src="/assets/..." alt="" className="w-full h-full object-cover" /> */}
+        <img
+          src="/assets/login-hero.jpg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Tablet: image strip */}
+      <div
+        className="hidden md:block lg:hidden w-full overflow-hidden"
+        style={{ height: "40vh" }}
+      >
+        <img
+          src="/assets/login-hero.jpg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Desktop: left half */}
+      <div className="hidden lg:block lg:w-1/2 lg:min-h-screen overflow-hidden">
+        <img
+          src="/assets/login-hero.jpg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* ── Right: Form ── */}
@@ -60,21 +71,9 @@ export default function LoginPage() {
         style={{ backgroundColor: "var(--tellian-bg)" }}
       >
         <div className="w-full" style={{ maxWidth: "400px" }}>
-          {/* 1. Wordmark */}
+          {/* 1. Logo SVG + accent line */}
           <div>
-            <span
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "14px",
-                fontWeight: 500,
-                letterSpacing: "0.3em",
-                textTransform: "uppercase",
-                color: "var(--tellian-dark)",
-                display: "block",
-              }}
-            >
-              Tellian Capital
-            </span>
+            <TellianLogo width={120} style={{ color: "var(--tellian-dark)" }} />
             <div
               style={{
                 width: "24px",
@@ -100,11 +99,8 @@ export default function LoginPage() {
             Mandanten-Portal
           </h1>
 
-          {/* 3. Form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{ marginTop: "64px" }}
-          >
+          {/* 3. Form — underline inputs matching website contact section */}
+          <form onSubmit={handleSubmit} style={{ marginTop: "64px" }}>
             {/* Email */}
             <div>
               <label
@@ -127,25 +123,27 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@beispiel.ch"
+                className="placeholder:text-tellian-muted focus:border-tellian-dark"
                 style={{
                   width: "100%",
-                  height: "48px",
-                  padding: "0 16px",
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid var(--tellian-line)",
-                  borderRadius: "2px",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderBottom: "1px solid var(--tellian-line)",
+                  borderRadius: 0,
+                  padding: "12px 0 10px 0",
                   fontFamily: "var(--font-inter), 'Inter', sans-serif",
                   fontSize: "15px",
                   fontWeight: 400,
                   color: "var(--tellian-dark)",
                   outline: "none",
-                  transition: "border-color 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+                  transition: "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
                 onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--tellian-dark)")
+                  (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
                 }
                 onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--tellian-line)")
+                  (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
                 }
               />
             </div>
@@ -172,25 +170,26 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="placeholder:text-tellian-muted focus:border-tellian-dark"
                 style={{
                   width: "100%",
-                  height: "48px",
-                  padding: "0 16px",
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid var(--tellian-line)",
-                  borderRadius: "2px",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderBottom: "1px solid var(--tellian-line)",
+                  borderRadius: 0,
+                  padding: "12px 0 10px 0",
                   fontFamily: "var(--font-inter), 'Inter', sans-serif",
                   fontSize: "15px",
                   fontWeight: 400,
                   color: "var(--tellian-dark)",
                   outline: "none",
-                  transition: "border-color 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+                  transition: "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
                 onFocus={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--tellian-dark)")
+                  (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
                 }
                 onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = "var(--tellian-line)")
+                  (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
                 }
               />
             </div>
@@ -212,10 +211,11 @@ export default function LoginPage() {
               </p>
             )}
 
-            {/* 4. Submit */}
+            {/* 4. Submit — matches website solid CTA style */}
             <button
               type="submit"
               disabled={loading}
+              className="hover:bg-tellian-charcoal active:scale-[0.98]"
               style={{
                 width: "100%",
                 height: "56px",
@@ -223,30 +223,26 @@ export default function LoginPage() {
                 backgroundColor: "var(--tellian-dark)",
                 color: "#FFFFFF",
                 border: "none",
-                borderRadius: "2px",
+                borderRadius: 0,
                 cursor: loading ? "not-allowed" : "pointer",
                 opacity: loading ? 0.8 : 1,
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "14px",
+                fontSize: "11px",
                 fontWeight: 500,
-                letterSpacing: "0.15em",
+                letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "10px",
-                transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+                transition: "background-color 300ms ease-out, opacity 300ms ease-out",
               }}
             >
               Anmelden
               {loading ? (
-                <Loader2
-                  size={16}
-                  className="animate-spin"
-                  style={{ color: "#FFFFFF" }}
-                />
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <ArrowRight size={16} style={{ color: "#FFFFFF" }} />
+                <ArrowRight size={16} />
               )}
             </button>
           </form>
@@ -262,7 +258,6 @@ export default function LoginPage() {
               fontWeight: 400,
               color: "var(--tellian-stone)",
               textDecoration: "none",
-              transition: "text-decoration 200ms",
             }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.textDecoration = "underline")
@@ -277,16 +272,17 @@ export default function LoginPage() {
 
         {/* 6. Footer eyebrow */}
         <div
-          className="absolute bottom-8 flex justify-center lg:justify-start"
-          style={{ left: 0, right: 0, paddingLeft: "inherit", paddingRight: "inherit" }}
+          className="absolute bottom-8"
+          style={{
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            paddingLeft: "inherit",
+            paddingRight: "inherit",
+          }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
+          <div className="flex items-center gap-3">
             <span
               aria-hidden
               style={{
