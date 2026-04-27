@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine } from "lucide-react";
+import { ArrowDownToLine, FileText } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 
 // TODO: replace with backend call (Supabase Storage list)
@@ -74,12 +74,16 @@ export default function DocumentsPage() {
         </p>
       </div>
 
-      {/* Document list */}
-      <div style={{ borderTop: "1px solid var(--tellian-line)", borderBottom: "1px solid var(--tellian-line)" }}>
-        {documents.map((doc) => (
-          <DocumentRow key={doc.id} doc={doc} />
-        ))}
-      </div>
+      {/* Document list or empty state */}
+      {documents.length > 0 ? (
+        <div style={{ borderTop: "1px solid var(--tellian-line)", borderBottom: "1px solid var(--tellian-line)" }}>
+          {documents.map((doc) => (
+            <DocumentRow key={doc.id} doc={doc} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState />
+      )}
     </PortalLayout>
   );
 }
@@ -158,5 +162,45 @@ function DocumentRow({ doc }: { doc: Document }) {
         />
       </div>
     </button>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div
+      className="flex flex-col items-center text-center"
+      style={{ padding: "96px 24px" }}
+    >
+      <FileText
+        size={48}
+        style={{ color: "var(--tellian-muted)", opacity: 0.5 }}
+      />
+      <h2
+        style={{
+          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+          fontSize: "28px",
+          fontWeight: 400,
+          color: "var(--tellian-dark)",
+          margin: 0,
+          marginTop: "24px",
+        }}
+      >
+        Keine Berichte verfügbar.
+      </h2>
+      <p
+        style={{
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: "15px",
+          fontWeight: 400,
+          color: "var(--tellian-stone)",
+          lineHeight: 1.6,
+          marginTop: "12px",
+          marginBottom: 0,
+          maxWidth: "400px",
+        }}
+      >
+        Sobald neue Dokumente bereitstehen, werden sie hier angezeigt.
+      </p>
+    </div>
   );
 }
