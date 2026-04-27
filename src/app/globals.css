@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Tellian Capital — brand palette (synced from main site theme.css) ── */
+  --tellian-bg: #F9F9F7;
+  --tellian-bg-secondary: #F2F1EC;
+  --tellian-dark: #1A1916;
+  --tellian-charcoal: #3A3835;
+  --tellian-stone: #8A857C;
+  --tellian-muted: #B0ACA5;
+  --tellian-line: #D8D5CF;
+  --tellian-warm: #989071;
+  --tellian-subtle: #E8E6E1;
+  --tellian-accent: #6B665E;
+
+  /* ── Form states ── */
+  --tellian-error: #B5453A;
+  --tellian-error-bg: #FDF2F1;
+  --tellian-success: #3D7B5F;
+  --tellian-success-bg: #F0F7F3;
+  --tellian-warning: #A68B3C;
+  --tellian-warning-bg: #FBF7EE;
+
+  /* ── Shadows ── */
+  --tellian-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --tellian-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --tellian-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
+
+  /* REBRAND: pending */
+  --tellian-font-serif: 'Cormorant Garamond', serif;
+  --tellian-font-sans: 'Inter', sans-serif;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-tellian-bg: var(--tellian-bg);
+  --color-tellian-bg-secondary: var(--tellian-bg-secondary);
+  --color-tellian-dark: var(--tellian-dark);
+  --color-tellian-charcoal: var(--tellian-charcoal);
+  --color-tellian-stone: var(--tellian-stone);
+  --color-tellian-muted: var(--tellian-muted);
+  --color-tellian-line: var(--tellian-line);
+  --color-tellian-warm: var(--tellian-warm);
+  --color-tellian-subtle: var(--tellian-subtle);
+  --color-tellian-accent: var(--tellian-accent);
+  --color-tellian-error: var(--tellian-error);
+  --color-tellian-error-bg: var(--tellian-error-bg);
+  --color-tellian-success: var(--tellian-success);
+  --color-tellian-success-bg: var(--tellian-success-bg);
+  --color-tellian-warning: var(--tellian-warning);
+  --color-tellian-warning-bg: var(--tellian-warning-bg);
+  --shadow-tellian-sm: var(--tellian-shadow-sm);
+  --shadow-tellian-md: var(--tellian-shadow-md);
+  --shadow-tellian-lg: var(--tellian-shadow-lg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--tellian-bg);
+  color: var(--tellian-dark);
 }

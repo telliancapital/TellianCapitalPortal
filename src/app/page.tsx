@@ -1,65 +1,144 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+// TODO: protect with Supabase Auth middleware
+// Users without session should be redirected to /login
+
+export default function DocumentsPage() {
+  // TODO: fetch documents from Supabase Storage
+  // const { data } = await supabase.storage.from("docs").list(userId);
+  const documents = [
+    { name: "Quartalsbericht Q1 2026.pdf", date: "2026-03-31" },
+    { name: "Vermögensübersicht 2025.pdf", date: "2026-01-15" },
+    { name: "Mandatsvertrag.pdf", date: "2025-06-01" },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="flex-1 flex flex-col">
+      {/* Header */}
+      <header
+        className="flex items-center justify-between px-6 md:px-10"
+        style={{
+          height: "64px",
+          borderBottom: "1px solid var(--tellian-line)",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+            fontSize: "18px",
+            fontWeight: 400,
+            color: "var(--tellian-dark)",
+          }}
+        >
+          Tellian Capital
+        </span>
+        <button
+          className="uppercase tracking-[0.16em] transition-colors duration-300"
+          style={{
+            fontSize: "10px",
+            color: "var(--tellian-stone)",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+          }}
+          // TODO: supabase.auth.signOut() then redirect to /login
+        >
+          Abmelden
+        </button>
+      </header>
+
+      {/* Content */}
+      <main className="flex-1 px-6 md:px-10 py-10 max-w-[680px]">
+        <h1
+          style={{
+            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+            fontSize: "clamp(28px, 4vw, 40px)",
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: "var(--tellian-dark)",
+            margin: 0,
+          }}
+        >
+          Ihre Dokumente
+        </h1>
+        <p
+          className="mt-3 mb-10"
+          style={{
+            fontSize: "14px",
+            color: "var(--tellian-stone)",
+            lineHeight: 1.6,
+          }}
+        >
+          Hier finden Sie alle Unterlagen zu Ihrem Mandat.
+        </p>
+
+        {/* Document list */}
+        <ul className="flex flex-col" style={{ gap: 0 }}>
+          {documents.map((doc) => (
+            <li
+              key={doc.name}
+              className="flex items-center justify-between py-4"
+              style={{ borderBottom: "0.5px solid var(--tellian-line)" }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <div className="flex flex-col gap-1 min-w-0 mr-4">
+                <span
+                  className="truncate"
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 400,
+                    color: "var(--tellian-dark)",
+                  }}
+                >
+                  {doc.name}
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--tellian-muted)" }}>
+                  {new Date(doc.date).toLocaleDateString("de-CH")}
+                </span>
+              </div>
+              <a
+                href="#"
+                className="shrink-0 uppercase tracking-[0.16em] transition-colors duration-300"
+                style={{
+                  fontSize: "10px",
+                  color: "var(--tellian-stone)",
+                  textDecoration: "none",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "var(--tellian-dark)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "var(--tellian-stone)")
+                }
+              >
+                Herunterladen ↓
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {documents.length === 0 && (
+          <p
+            className="text-center py-16"
+            style={{ fontSize: "14px", color: "var(--tellian-muted)" }}
+          >
+            Noch keine Dokumente verfügbar.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        )}
       </main>
+
+      {/* Footer */}
+      <footer
+        className="px-6 md:px-10 py-6 text-center"
+        style={{
+          fontSize: "9px",
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          color: "var(--tellian-muted)",
+          opacity: 0.6,
+        }}
+      >
+        Tellian Capital AG — Zürich
+      </footer>
     </div>
   );
 }
