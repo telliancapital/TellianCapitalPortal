@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TellianLogo } from "@/components/TellianLogo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -28,18 +29,9 @@ export default function LoginPage() {
     <div className="flex-1 flex items-center justify-center px-5">
       <div className="w-full max-w-[360px]">
         {/* Logo */}
-        <h1
-          className="text-center mb-12"
-          style={{
-            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-            fontSize: "28px",
-            fontWeight: 400,
-            letterSpacing: "-0.02em",
-            color: "var(--tellian-dark)",
-          }}
-        >
-          Tellian Capital
-        </h1>
+        <div className="flex justify-center mb-12">
+          <TellianLogo width={160} style={{ color: "var(--tellian-dark)" }} />
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Email */}

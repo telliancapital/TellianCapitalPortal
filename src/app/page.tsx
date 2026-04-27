@@ -1,5 +1,7 @@
 "use client";
 
+import { TellianLogo } from "@/components/TellianLogo";
+
 // TODO: protect with Supabase Auth middleware
 // Users without session should be redirected to /login
 
@@ -22,16 +24,7 @@ export default function DocumentsPage() {
           borderBottom: "1px solid var(--tellian-line)",
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-            fontSize: "18px",
-            fontWeight: 400,
-            color: "var(--tellian-dark)",
-          }}
-        >
-          Tellian Capital
-        </span>
+        <TellianLogo width={90} style={{ color: "var(--tellian-dark)" }} />
         <button
           className="uppercase tracking-[0.16em] transition-colors duration-300"
           style={{
