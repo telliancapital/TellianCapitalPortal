@@ -63,7 +63,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     (key: TranslationKey, vars?: Record<string, string | number>) => {
       const entry = translations[key];
       if (!entry) return key;
-      let text = entry[locale] ?? entry.de;
+      let text: string = entry[locale] ?? entry.de;
       if (vars) {
         for (const [k, v] of Object.entries(vars)) {
           text = text.replace(`{${k}}`, String(v));
