@@ -26,16 +26,26 @@ const translations = {
   },
   "login.support": { de: "Probleme beim Anmelden?", en: "Trouble signing in?" },
   "login.support.link": { de: "Support kontaktieren", en: "Contact support" },
-  "login.footer": { de: "FINMA-lizenziert · Zürich", en: "FINMA-licensed · Zurich" },
+  "login.footer": {
+    de: "FINMA-lizenziert · Zürich",
+    en: "FINMA-licensed · Zurich",
+  },
+  "login.back": { de: "Zurück", en: "Back" },
 
   // Portal layout
   "portal.logout": { de: "Abmelden", en: "Sign out" },
 
   // Documents page
   "docs.headline": { de: "Ihre Berichte", en: "Your reports" },
-  "docs.count": { de: "{n} Dokumente verfügbar", en: "{n} documents available" },
+  "docs.count": {
+    de: "{n} Dokumente verfügbar",
+    en: "{n} documents available",
+  },
   "docs.download": { de: "Herunterladen", en: "Download" },
-  "docs.empty.headline": { de: "Keine Berichte verfügbar.", en: "No reports available." },
+  "docs.empty.headline": {
+    de: "Keine Berichte verfügbar.",
+    en: "No reports available.",
+  },
   "docs.empty.subtitle": {
     de: "Sobald neue Dokumente bereitstehen, werden sie hier angezeigt.",
     en: "New documents will appear here once they are ready.",
@@ -71,14 +81,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
       return text;
     },
-    [locale]
+    [locale],
   );
 
-  return (
-    <I18nContext value={{ locale, setLocale, t }}>
-      {children}
-    </I18nContext>
-  );
+  return <I18nContext value={{ locale, setLocale, t }}>{children}</I18nContext>;
 }
 
 export function useI18n() {

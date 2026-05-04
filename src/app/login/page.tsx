@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { TellianLogo } from "@/components/TellianLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/lib/auth";
@@ -38,7 +38,11 @@ export default function LoginPage() {
         className="block md:hidden w-full overflow-hidden"
         style={{ height: "200px" }}
       >
-        <img src="/login-hero.jpeg" alt="" className="w-full h-full object-cover" />
+        <img
+          src="/login-hero.jpeg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Tablet: image strip */}
@@ -46,12 +50,20 @@ export default function LoginPage() {
         className="hidden md:block lg:hidden w-full overflow-hidden"
         style={{ height: "40vh" }}
       >
-        <img src="/login-hero.jpeg" alt="" className="w-full h-full object-cover" />
+        <img
+          src="/login-hero.jpeg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Desktop: left half */}
       <div className="hidden lg:block lg:w-1/2 lg:min-h-screen overflow-hidden">
-        <img src="/login-hero.jpeg" alt="" className="w-full h-full object-cover" />
+        <img
+          src="/login-hero.jpeg"
+          alt=""
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* ── Right: Form ── */}
@@ -59,13 +71,41 @@ export default function LoginPage() {
         className="w-full lg:w-1/2 flex-1 flex flex-col relative px-6 py-12 md:px-12 lg:px-20"
         style={{ backgroundColor: "var(--tellian-bg)" }}
       >
-        {/* Language toggle — top right */}
-        <div className="absolute top-6 right-6 md:top-8 md:right-12 lg:right-20">
+        {/* Top row — back link + language toggle */}
+        <div className="flex items-center justify-between">
+          <a
+            href="https://telliancapital.vercel.app/de"
+            aria-label={t("login.back")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "13px",
+              fontWeight: 400,
+              letterSpacing: "0.05em",
+              color: "var(--tellian-stone)",
+              textDecoration: "none",
+              transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--tellian-dark)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--tellian-stone)")
+            }
+          >
+            <ArrowLeft size={16} />
+            {t("login.back")}
+          </a>
           <LanguageToggle />
         </div>
 
         {/* Centered form container */}
-        <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: "400px" }}>
+        <div
+          className="flex-1 flex flex-col justify-center"
+          style={{ maxWidth: "400px" }}
+        >
           {/* 1. Logo + accent line */}
           <div>
             <TellianLogo width={120} style={{ color: "var(--tellian-dark)" }} />
@@ -107,7 +147,9 @@ export default function LoginPage() {
           >
             {t("login.headline1")}
             <br />
-            <em style={{ fontStyle: "italic", fontWeight: 300 }}>{t("login.headline2")}</em>
+            <em style={{ fontStyle: "italic", fontWeight: 300 }}>
+              {t("login.headline2")}
+            </em>
           </h1>
           <p
             style={{
@@ -162,10 +204,17 @@ export default function LoginPage() {
                   fontWeight: 400,
                   color: "var(--tellian-dark)",
                   outline: "none",
-                  transition: "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
+                  transition:
+                    "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")}
-                onBlur={(e) => (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")}
+                onFocus={(e) =>
+                  (e.currentTarget.style.borderBottomColor =
+                    "var(--tellian-dark)")
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.borderBottomColor =
+                    "var(--tellian-line)")
+                }
               />
             </div>
 
@@ -204,10 +253,17 @@ export default function LoginPage() {
                   fontWeight: 400,
                   color: "var(--tellian-dark)",
                   outline: "none",
-                  transition: "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
+                  transition:
+                    "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")}
-                onBlur={(e) => (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")}
+                onFocus={(e) =>
+                  (e.currentTarget.style.borderBottomColor =
+                    "var(--tellian-dark)")
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.borderBottomColor =
+                    "var(--tellian-line)")
+                }
               />
             </div>
 
@@ -252,7 +308,8 @@ export default function LoginPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "10px",
-                transition: "background-color 300ms ease-out, opacity 300ms ease-out",
+                transition:
+                  "background-color 300ms ease-out, opacity 300ms ease-out",
               }}
             >
               {t("login.submit")}
@@ -276,17 +333,19 @@ export default function LoginPage() {
               color: "var(--tellian-stone)",
               textDecoration: "none",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.textDecoration = "underline")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.textDecoration = "none")
+            }
           >
             {t("login.forgot")}
           </a>
         </div>
 
         {/* 6. Footer eyebrow */}
-        <div
-          className="flex items-center gap-3 mt-auto pt-8 pb-2"
-        >
+        <div className="flex items-center gap-3 mt-auto pt-8 pb-2">
           <span
             aria-hidden
             style={{
