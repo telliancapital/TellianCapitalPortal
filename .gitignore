@@ -32,7 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-
+.env.local
 # vercel
 .vercel
 
@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 node_modules
 .env.local
+
+
+.claude
+.agents
+.codex
