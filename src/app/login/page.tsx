@@ -34,6 +34,39 @@ interface LoginResponse {
   error?: string;
 }
 
+type ValidationKey =
+  | "validation.customerId.required"
+  | "validation.customerId.invalid"
+  | "validation.password.required"
+  | "validation.password.policy"
+  | "validation.mfaCode";
+
+function validateCustomerId(v: string): ValidationKey | null {
+  const trimmed = v.trim();
+  if (!trimmed) return "validation.customerId.required";
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) return "validation.customerId.invalid";
+  return null;
+}
+
+function validateLoginPassword(v: string): ValidationKey | null {
+  return v ? null : "validation.password.required";
+}
+
+function validateNewPassword(v: string): ValidationKey | null {
+  if (!v) return "validation.password.required";
+  if (v.length < 8) return "validation.password.policy";
+  if (!/[A-Z]/.test(v)) return "validation.password.policy";
+  if (!/[a-z]/.test(v)) return "validation.password.policy";
+  if (!/[0-9]/.test(v)) return "validation.password.policy";
+  if (!/[!@#$%^&*(),.?":{}|<>_\-=+[\]\\/;'`~]/.test(v))
+    return "validation.password.policy";
+  return null;
+}
+
+function validateMfaCode(v: string): ValidationKey | null {
+  return /^\d{6}$/.test(v) ? null : "validation.mfaCode";
+}
+
 interface MfaSetupInitResponse {
   status?: "OK";
   secretCode?: string;
@@ -52,6 +85,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [customerIdError, setCustomerIdError] =
+    useState<ValidationKey | null>(null);
+  const [passwordError, setPasswordError] =
+    useState<ValidationKey | null>(null);
+  const [newPasswordError, setNewPasswordError] =
+    useState<ValidationKey | null>(null);
+  const [mfaCodeError, setMfaCodeError] = useState<ValidationKey | null>(null);
+  const [setupCodeError, setSetupCodeError] =
+    useState<ValidationKey | null>(null);
   const { t } = useI18n();
 
   async function startMfaSetup(session: string, customerIdArg: string) {
@@ -123,6 +165,9 @@ export default function LoginPage() {
   async function handleOptionalMfaVerify(e: React.FormEvent) {
     e.preventDefault();
     if (stage.kind !== "optionalMfaSetup") return;
+    const codeErr = validateMfaCode(setupCode);
+    setSetupCodeError(codeErr);
+    if (codeErr) return;
     setError(null);
     setLoading(true);
     try {
@@ -249,6 +294,9 @@ export default function LoginPage() {
   async function handleMfaSetupVerify(e: React.FormEvent) {
     e.preventDefault();
     if (stage.kind !== "mfaSetup") return;
+    const codeErr = validateMfaCode(setupCode);
+    setSetupCodeError(codeErr);
+    if (codeErr) return;
     setError(null);
     setLoading(true);
     try {
@@ -276,6 +324,11 @@ export default function LoginPage() {
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
+    const customerIdErr = validateCustomerId(customerId);
+    const passwordErr = validateLoginPassword(password);
+    setCustomerIdError(customerIdErr);
+    setPasswordError(passwordErr);
+    if (customerIdErr || passwordErr) return;
     setError(null);
     setInfo(null);
     setLoading(true);
@@ -306,6 +359,15 @@ export default function LoginPage() {
       stage.kind === "optionalMfaSetup"
     ) {
       return;
+    }
+    if (stage.kind === "newPassword") {
+      const err = validateNewPassword(newPassword);
+      setNewPasswordError(err);
+      if (err) return;
+    } else {
+      const err = validateMfaCode(mfaCode);
+      setMfaCodeError(err);
+      if (err) return;
     }
     setError(null);
     setLoading(true);
@@ -433,15 +495,23 @@ export default function LoginPage() {
           </p>
 
           {stage.kind === "credentials" ? (
-            <form onSubmit={handleCredentials} style={{ marginTop: "64px" }}>
+            <form
+              onSubmit={handleCredentials}
+              noValidate
+              style={{ marginTop: "64px" }}
+            >
               <Field
                 id="customerId"
                 label={t("login.customerId.label")}
                 placeholder={t("login.customerId.placeholder")}
                 type="text"
                 value={customerId}
-                onChange={setCustomerId}
+                onChange={(v) => {
+                  setCustomerId(v);
+                  if (customerIdError) setCustomerIdError(null);
+                }}
                 autoComplete="username"
+                error={customerIdError ? t(customerIdError) : null}
               />
               <div style={{ marginTop: "24px" }}>
                 <Field
@@ -449,8 +519,12 @@ export default function LoginPage() {
                   label={t("login.password.label")}
                   type="password"
                   value={password}
-                  onChange={setPassword}
+                  onChange={(v) => {
+                    setPassword(v);
+                    if (passwordError) setPasswordError(null);
+                  }}
                   autoComplete="current-password"
+                  error={passwordError ? t(passwordError) : null}
                 />
               </div>
               <InfoText message={info} />
@@ -460,6 +534,7 @@ export default function LoginPage() {
           ) : stage.kind === "optionalMfaSetup" ? (
             <form
               onSubmit={handleOptionalMfaVerify}
+              noValidate
               style={{ marginTop: "48px" }}
             >
               <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
@@ -469,8 +544,12 @@ export default function LoginPage() {
                   label={t("challenge.mfaSetup.label")}
                   type="text"
                   value={setupCode}
-                  onChange={setSetupCode}
+                  onChange={(v) => {
+                    setSetupCode(v);
+                    if (setupCodeError) setSetupCodeError(null);
+                  }}
                   autoComplete="one-time-code"
+                  error={setupCodeError ? t(setupCodeError) : null}
                 />
               </div>
               <ErrorText error={error} />
@@ -499,7 +578,11 @@ export default function LoginPage() {
               </button>
             </form>
           ) : stage.kind === "mfaSetup" ? (
-            <form onSubmit={handleMfaSetupVerify} style={{ marginTop: "48px" }}>
+            <form
+              onSubmit={handleMfaSetupVerify}
+              noValidate
+              style={{ marginTop: "48px" }}
+            >
               <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
               <div style={{ marginTop: "32px" }}>
                 <Field
@@ -507,8 +590,12 @@ export default function LoginPage() {
                   label={t("challenge.mfaSetup.label")}
                   type="text"
                   value={setupCode}
-                  onChange={setSetupCode}
+                  onChange={(v) => {
+                    setSetupCode(v);
+                    if (setupCodeError) setSetupCodeError(null);
+                  }}
                   autoComplete="one-time-code"
+                  error={setupCodeError ? t(setupCodeError) : null}
                 />
               </div>
               <ErrorText error={error} />
@@ -537,15 +624,23 @@ export default function LoginPage() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleChallenge} style={{ marginTop: "64px" }}>
+            <form
+              onSubmit={handleChallenge}
+              noValidate
+              style={{ marginTop: "64px" }}
+            >
               {stage.kind === "newPassword" ? (
                 <Field
                   id="newPassword"
                   label={t("challenge.newPassword.label")}
                   type="password"
                   value={newPassword}
-                  onChange={setNewPassword}
+                  onChange={(v) => {
+                    setNewPassword(v);
+                    if (newPasswordError) setNewPasswordError(null);
+                  }}
                   autoComplete="new-password"
+                  error={newPasswordError ? t(newPasswordError) : null}
                 />
               ) : (
                 <Field
@@ -553,8 +648,12 @@ export default function LoginPage() {
                   label={t("challenge.mfa.label")}
                   type="text"
                   value={mfaCode}
-                  onChange={setMfaCode}
+                  onChange={(v) => {
+                    setMfaCode(v);
+                    if (mfaCodeError) setMfaCodeError(null);
+                  }}
                   autoComplete="one-time-code"
+                  error={mfaCodeError ? t(mfaCodeError) : null}
                 />
               )}
               <ErrorText error={error} />
@@ -587,12 +686,9 @@ export default function LoginPage() {
           )}
 
           {stage.kind === "credentials" && (
-            <div className="flex items-center justify-between" style={{ marginTop: "24px" }}>
+            <div style={{ marginTop: "24px" }}>
               <a href="#" style={mutedLinkStyle}>
                 {t("login.forgot")}
-              </a>
-              <a href="/signup" style={mutedLinkStyle}>
-                {t("login.signup")}
               </a>
             </div>
           )}
@@ -624,6 +720,7 @@ function Field({
   onChange,
   placeholder,
   autoComplete,
+  error,
 }: {
   id: string;
   label: string;
@@ -632,6 +729,7 @@ function Field({
   onChange: (v: string) => void;
   placeholder?: string;
   autoComplete?: string;
+  error?: string | null;
 }) {
   return (
     <div>
@@ -641,20 +739,32 @@ function Field({
       <input
         id={id}
         type={type}
-        required
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        aria-invalid={Boolean(error) || undefined}
         className="placeholder:text-tellian-muted"
-        style={inputStyle}
+        style={{
+          ...inputStyle,
+          borderBottom: `1px solid ${error ? "var(--tellian-error)" : "var(--tellian-line)"}`,
+        }}
         onFocus={(e) =>
-          (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
+          (e.currentTarget.style.borderBottomColor = error
+            ? "var(--tellian-error)"
+            : "var(--tellian-dark)")
         }
         onBlur={(e) =>
-          (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
+          (e.currentTarget.style.borderBottomColor = error
+            ? "var(--tellian-error)"
+            : "var(--tellian-line)")
         }
       />
+      {error && (
+        <p role="alert" style={fieldErrorStyle}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -816,8 +926,17 @@ const errorStyle: React.CSSProperties = {
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
   fontSize: "13px",
   fontWeight: 400,
-  color: "var(--tellian-charcoal)",
+  color: "var(--tellian-error)",
   marginTop: "16px",
+  marginBottom: 0,
+};
+
+const fieldErrorStyle: React.CSSProperties = {
+  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+  fontSize: "12px",
+  fontWeight: 400,
+  color: "var(--tellian-error)",
+  marginTop: "6px",
   marginBottom: 0,
 };
 

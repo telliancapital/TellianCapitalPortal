@@ -27,8 +27,6 @@ const translations = {
     de: "Kunden-ID oder Passwort ungültig.",
     en: "Invalid customer ID or password.",
   },
-  "login.signup": { de: "Konto erstellen", en: "Create account" },
-
   // Challenges
   "challenge.newPassword.headline": {
     de: "Neues Passwort festlegen",
@@ -90,28 +88,6 @@ const translations = {
   },
   "challenge.submit": { de: "Bestätigen", en: "Confirm" },
 
-  // Signup page
-  "signup.eyebrow": { de: "Konto erstellen", en: "Create account" },
-  "signup.headline1": { de: "Werden Sie", en: "Become a" },
-  "signup.headline2": { de: "Mandant.", en: "client." },
-  "signup.subtext": {
-    de: "Erstellen Sie Ihr Konto mit Ihrer Kunden-ID. Beim ersten Login werden Sie aufgefordert, ein neues Passwort festzulegen.",
-    en: "Create your account using your customer ID. You will be asked to set a new password on first login.",
-  },
-  "signup.submit": { de: "Konto erstellen", en: "Create account" },
-  "signup.haveAccount": {
-    de: "Bereits registriert?",
-    en: "Already have an account?",
-  },
-  "signup.login": { de: "Anmelden", en: "Sign in" },
-  "signup.error.exists": {
-    de: "Diese Kunden-ID ist bereits registriert.",
-    en: "This customer ID is already registered.",
-  },
-  "signup.success": {
-    de: "Konto erstellt. Bitte melden Sie sich an.",
-    en: "Account created. Please sign in.",
-  },
   "login.support": { de: "Probleme beim Anmelden?", en: "Trouble signing in?" },
   "login.support.link": { de: "Support kontaktieren", en: "Contact support" },
   "login.footer": {
@@ -185,6 +161,28 @@ const translations = {
   // Document types
   "type.Quartalsbericht": { de: "Quartalsbericht", en: "Quarterly report" },
   "type.Monatsbericht": { de: "Monatsbericht", en: "Monthly report" },
+
+  // Validation
+  "validation.customerId.required": {
+    de: "Kunden-ID ist erforderlich.",
+    en: "Customer ID is required.",
+  },
+  "validation.customerId.invalid": {
+    de: "Bitte geben Sie eine gültige Kunden-ID ein (keine E-Mail-Adresse).",
+    en: "Please enter a valid customer ID (not an email address).",
+  },
+  "validation.password.required": {
+    de: "Passwort ist erforderlich.",
+    en: "Password is required.",
+  },
+  "validation.password.policy": {
+    de: "Mindestens 8 Zeichen mit Gross-/Kleinbuchstaben, Zahl und Sonderzeichen.",
+    en: "At least 8 characters with upper- and lowercase letters, a number and a special character.",
+  },
+  "validation.mfaCode": {
+    de: "Code muss aus 6 Ziffern bestehen.",
+    en: "Code must be 6 digits.",
+  },
 } as const;
 
 type TranslationKey = keyof typeof translations;
