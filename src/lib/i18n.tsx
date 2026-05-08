@@ -152,6 +152,14 @@ const translations = {
     de: "Als Benutzer anmelden",
     en: "Login as user",
   },
+  "admin.action.resetPassword": {
+    de: "Passwort zurücksetzen",
+    en: "Reset password",
+  },
+  "admin.resetPassword.notice": {
+    de: "Passwort zurückgesetzt. Temporäres Passwort:",
+    en: "Password reset. Temporary password:",
+  },
 
   // Impersonation
   "impersonation.banner": {

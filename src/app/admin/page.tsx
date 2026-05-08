@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogIn, Loader2, UserPlus, X } from "lucide-react";
+import { KeyRound, Loader2, LogIn, UserPlus, X } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -107,6 +107,27 @@ export default function AdminPage() {
     router.replace("/");
   }
 
+  async function handleResetPassword(u: AdminUser) {
+    setError(null);
+    setCreatedNotice(null);
+    const res = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u.username }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      temporaryPassword?: string;
+    };
+    if (!res.ok) {
+      setError(data.error ?? "Failed to reset password");
+      return;
+    }
+    setCreatedNotice(
+      `${t("admin.resetPassword.notice")} ${data.temporaryPassword} (${u.username})`,
+    );
+  }
+
   return (
     <PortalLayout>
       <div
@@ -203,7 +224,7 @@ export default function AdminPage() {
         }}
       >
         <div
-          className="hidden md:grid"
+          className="hidden md:grid md:items-center"
           style={{
             gridTemplateColumns: showActionsColumn
               ? "2fr 1.5fr 1fr 2fr"
@@ -241,6 +262,7 @@ export default function AdminPage() {
               onChangeRole={(role) => handleChangeRole(u.username, role)}
               onToggle={() => handleToggleEnabled(u)}
               onImpersonate={() => handleImpersonate(u)}
+              onResetPassword={() => handleResetPassword(u)}
               isSelf={u.username === user.username}
               canManage={canManageUsers}
               canImpersonate={canImpersonateUsers}
@@ -270,6 +292,7 @@ function UserRow({
   onChangeRole,
   onToggle,
   onImpersonate,
+  onResetPassword,
   isSelf,
   canManage,
   canImpersonate,
@@ -279,6 +302,7 @@ function UserRow({
   onChangeRole: (role: Role) => void;
   onToggle: () => void;
   onImpersonate: () => void;
+  onResetPassword: () => void;
   isSelf: boolean;
   canManage: boolean;
   canImpersonate: boolean;
@@ -297,7 +321,8 @@ function UserRow({
         gridTemplateColumns: showActions
           ? "2fr 1.5fr 1fr 2fr"
           : "2fr 1.5fr 1fr",
-        padding: "20px 0",
+        padding: "16px 0",
+        minHeight: "64px",
         borderBottom: "1px solid var(--tellian-line)",
         gap: "16px",
         fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -318,16 +343,9 @@ function UserRow({
         {user.username}
       </div>
 
-      <div>
+      <div style={{ minWidth: 0, fontSize: "13px", color: "var(--tellian-dark)" }}>
         {!canManage ? (
-          <span
-            style={{
-              fontSize: "13px",
-              color: "var(--tellian-dark)",
-            }}
-          >
-            {currentRole}
-          </span>
+          <span>{currentRole}</span>
         ) : (
           <select
             value={currentRole}
@@ -335,8 +353,9 @@ function UserRow({
             disabled={roleSelectDisabled}
             style={{
               backgroundColor: "transparent",
-              border: "1px solid var(--tellian-line)",
-              padding: "8px 12px",
+              border: "none",
+              padding: 0,
+              margin: 0,
               fontFamily: "inherit",
               fontSize: "13px",
               color: "var(--tellian-dark)",
@@ -363,7 +382,7 @@ function UserRow({
       </div>
 
       {showActions && (
-        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap">
+        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap items-center">
           {canManage && (
             <button
               onClick={onToggle}
@@ -371,7 +390,8 @@ function UserRow({
               style={{
                 background: "transparent",
                 border: "1px solid var(--tellian-line)",
-                padding: "8px 16px",
+                padding: "0 14px",
+                height: "32px",
                 fontFamily: "inherit",
                 fontSize: "12px",
                 letterSpacing: "0.1em",
@@ -379,12 +399,24 @@ function UserRow({
                 color: "var(--tellian-dark)",
                 cursor: isSelf ? "not-allowed" : "pointer",
                 opacity: isSelf ? 0.5 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                lineHeight: 1,
               }}
             >
               {user.enabled
                 ? t("admin.action.disable")
                 : t("admin.action.enable")}
             </button>
+          )}
+          {canManage && (
+            <IconButton
+              onClick={onResetPassword}
+              disabled={isSelf}
+              title={t("admin.action.resetPassword")}
+            >
+              <KeyRound size={14} />
+            </IconButton>
           )}
           {canImpersonate && (
             <button
@@ -394,7 +426,8 @@ function UserRow({
               style={{
                 background: "transparent",
                 border: "1px solid var(--tellian-line)",
-                padding: "8px 16px",
+                padding: "0 14px",
+                height: "32px",
                 fontFamily: "inherit",
                 fontSize: "12px",
                 letterSpacing: "0.1em",
@@ -405,6 +438,7 @@ function UserRow({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
+                lineHeight: 1,
               }}
             >
               <LogIn size={12} />
@@ -414,6 +448,43 @@ function UserRow({
         </div>
       )}
     </div>
+  );
+}
+
+function IconButton({
+  onClick,
+  disabled,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      style={{
+        background: "transparent",
+        border: "1px solid var(--tellian-line)",
+        padding: "8px",
+        height: "32px",
+        width: "32px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--tellian-dark)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
