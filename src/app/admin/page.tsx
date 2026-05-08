@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, UserPlus, X } from "lucide-react";
+import { LogIn, Loader2, UserPlus, X } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -18,7 +18,7 @@ interface AdminUser {
 }
 
 export default function AdminPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -83,6 +83,22 @@ export default function AdminPage() {
       body: JSON.stringify({ username: u.username, enabled: !u.enabled }),
     });
     if (res.ok) await loadUsers();
+  }
+
+  async function handleImpersonate(u: AdminUser) {
+    setError(null);
+    const res = await fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u.username }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? "Failed to start impersonation");
+      return;
+    }
+    await refresh();
+    router.replace("/");
   }
 
   return (
@@ -213,6 +229,7 @@ export default function AdminPage() {
               user={u}
               onChangeRole={(role) => handleChangeRole(u.username, role)}
               onToggle={() => handleToggleEnabled(u)}
+              onImpersonate={() => handleImpersonate(u)}
               isSelf={u.username === user.username}
               t={t}
             />
@@ -239,16 +256,20 @@ function UserRow({
   user,
   onChangeRole,
   onToggle,
+  onImpersonate,
   isSelf,
   t,
 }: {
   user: AdminUser;
   onChangeRole: (role: Role) => void;
   onToggle: () => void;
+  onImpersonate: () => void;
   isSelf: boolean;
   t: (key: any) => string;
 }) {
   const currentRole = (user.groups[0] ?? "User") as Role;
+  const canImpersonate =
+    !isSelf && user.enabled && currentRole !== "Admin";
 
   return (
     <div
@@ -304,7 +325,7 @@ function UserRow({
         {user.enabled ? t("admin.status.enabled") : t("admin.status.disabled")}
       </div>
 
-      <div className="mt-3 md:mt-0">
+      <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap">
         <button
           onClick={onToggle}
           disabled={isSelf}
@@ -322,6 +343,29 @@ function UserRow({
           }}
         >
           {user.enabled ? t("admin.action.disable") : t("admin.action.enable")}
+        </button>
+        <button
+          onClick={onImpersonate}
+          disabled={!canImpersonate}
+          title={t("admin.action.impersonate")}
+          style={{
+            background: "transparent",
+            border: "1px solid var(--tellian-line)",
+            padding: "8px 16px",
+            fontFamily: "inherit",
+            fontSize: "12px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--tellian-dark)",
+            cursor: canImpersonate ? "pointer" : "not-allowed",
+            opacity: canImpersonate ? 1 : 0.4,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <LogIn size={12} />
+          {t("admin.action.impersonate")}
         </button>
       </div>
     </div>

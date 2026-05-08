@@ -136,6 +136,20 @@ const translations = {
     de: "Benutzer erstellt. Temporäres Passwort:",
     en: "User created. Temporary password:",
   },
+  "admin.action.impersonate": {
+    de: "Als Benutzer anmelden",
+    en: "Login as user",
+  },
+
+  // Impersonation
+  "impersonation.banner": {
+    de: "Sie sehen das Portal als {target}.",
+    en: "You are viewing the portal as {target}.",
+  },
+  "impersonation.exit": {
+    de: "Impersonation beenden",
+    en: "Exit impersonation",
+  },
 
   // Documents page
   "docs.headline": { de: "Ihre Berichte", en: "Your reports" },

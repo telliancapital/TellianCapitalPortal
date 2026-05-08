@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine,
   ChevronDown,
@@ -45,11 +46,18 @@ function formatDate(iso: string | null, locale: string): string {
 export default function DocumentsPage() {
   const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && user?.isAdmin) {
+      router.replace("/admin");
+    }
+  }, [authLoading, user, router]);
 
   const fetchPage = useCallback(
     async (cursorArg: string | null, append: boolean) => {
@@ -72,6 +80,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     if (authLoading || !user) return;
+    if (user.isAdmin) return;
     let cancelled = false;
     (async () => {
       setInitialLoading(true);

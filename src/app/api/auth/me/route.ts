@@ -37,6 +37,7 @@ export async function GET() {
     sub: session.sub,
     groups: session.groups,
     isAdmin: session.isAdmin,
+    impersonatedBy: session.impersonatedBy ?? null,
     mfaEnabled,
   });
 }
