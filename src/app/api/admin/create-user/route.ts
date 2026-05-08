@@ -15,9 +15,14 @@ import { requireApiGroup } from "@/lib/dal";
 
 interface CreateUserBody {
   customerId?: string;
+  userId?: string;
+  email?: string;
   role?: string;
   temporaryPassword?: string;
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ID_RE = /^[A-Za-z0-9_-]+$/;
 
 function generateTempPassword(): string {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -36,6 +41,10 @@ function generateTempPassword(): string {
   return [...required, ...rest].join("");
 }
 
+function isStaffRole(role: string): boolean {
+  return role === COGNITO_GROUPS.ADMIN || role === COGNITO_GROUPS.INTERNAL;
+}
+
 export async function POST(request: Request) {
   const auth = await requireApiGroup(COGNITO_GROUPS.ADMIN);
   if (!auth.ok) {
@@ -49,43 +58,88 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const customerId = body.customerId?.trim();
   const role = body.role ?? COGNITO_GROUPS.USER;
-
-  if (!customerId) {
-    return NextResponse.json(
-      { error: "customerId is required" },
-      { status: 400 },
-    );
-  }
   if (!isValidGroup(role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  let username: string;
+  const userAttributes: { Name: string; Value: string }[] = [];
+
+  if (isStaffRole(role)) {
+    const userId = body.userId?.trim();
+    const email = body.email?.trim().toLowerCase();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "userId is required for staff accounts" },
+        { status: 400 },
+      );
+    }
+    if (!ID_RE.test(userId)) {
+      return NextResponse.json(
+        { error: "Invalid user ID" },
+        { status: 400 },
+      );
+    }
+    if (!email) {
+      return NextResponse.json(
+        { error: "email is required for staff accounts" },
+        { status: 400 },
+      );
+    }
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 },
+      );
+    }
+    username = userId;
+    userAttributes.push({ Name: "email", Value: email });
+    userAttributes.push({ Name: "email_verified", Value: "true" });
+  } else {
+    const customerId = body.customerId?.trim();
+    if (!customerId) {
+      return NextResponse.json(
+        { error: "customerId is required" },
+        { status: 400 },
+      );
+    }
+    if (!ID_RE.test(customerId)) {
+      return NextResponse.json(
+        { error: "Invalid customer ID" },
+        { status: 400 },
+      );
+    }
+    username = customerId;
   }
 
   const temporaryPassword = body.temporaryPassword || generateTempPassword();
 
   try {
-    await cognito.send(
+    const created = await cognito.send(
       new AdminCreateUserCommand({
         UserPoolId: getUserPoolId(),
-        Username: customerId,
+        Username: username,
         TemporaryPassword: temporaryPassword,
         MessageAction: "SUPPRESS",
         ForceAliasCreation: false,
+        UserAttributes: userAttributes.length ? userAttributes : undefined,
       }),
     );
+
+    const actualUsername = created.User?.Username ?? username;
 
     await cognito.send(
       new AdminAddUserToGroupCommand({
         UserPoolId: getUserPoolId(),
-        Username: customerId,
+        Username: actualUsername,
         GroupName: role,
       }),
     );
 
     return NextResponse.json({
       status: "OK",
-      username: customerId,
+      username: actualUsername,
       role,
       temporaryPassword,
     });

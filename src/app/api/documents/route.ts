@@ -54,6 +54,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  if (auth.session.groups.includes("InternalEmployee")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { isAdmin, username } = auth.session;
   const prefix = isAdmin ? ROOT_PREFIX : `${ROOT_PREFIX}${username}/`;
 

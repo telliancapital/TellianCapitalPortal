@@ -5,7 +5,7 @@ import {
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { COGNITO_GROUPS, cognito, getUserPoolId } from "@/lib/cognito";
-import { requireRealApiAdmin } from "@/lib/dal";
+import { requireRealApiAdminOrInternal } from "@/lib/dal";
 import { setImpersonationCookie } from "@/lib/session";
 
 interface ImpersonateBody {
@@ -13,7 +13,7 @@ interface ImpersonateBody {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireRealApiAdmin();
+  const auth = await requireRealApiAdminOrInternal();
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

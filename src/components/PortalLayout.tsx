@@ -30,7 +30,10 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   }
 
   const isImpersonating = Boolean(user?.impersonatedBy);
-  const homeHref = user?.isAdmin ? "/admin" : "/";
+  const hasUserMgmtAccess = Boolean(
+    user?.isAdmin || user?.groups.includes("InternalEmployee"),
+  );
+  const homeHref = hasUserMgmtAccess ? "/admin" : "/";
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -126,7 +129,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           Tellian Capital
         </a>
         <div className="flex items-center gap-6">
-          {user.isAdmin && (
+          {hasUserMgmtAccess && (
             <a
               href="/admin"
               style={{

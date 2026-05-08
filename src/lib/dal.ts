@@ -47,7 +47,9 @@ export const verifyRealSession = cache(
 export const verifySession = cache(async (): Promise<VerifiedSession | null> => {
   const real = await verifyRealSession();
   if (!real) return null;
-  if (!real.isAdmin) return real;
+  const canImpersonate =
+    real.isAdmin || real.groups.includes(COGNITO_GROUPS.INTERNAL);
+  if (!canImpersonate) return real;
 
   const impersonation = await getImpersonationCookie();
   if (!impersonation) return real;
@@ -102,5 +104,34 @@ export async function requireRealApiAdmin(): Promise<
   const real = await verifyRealSession();
   if (!real) return { ok: false, status: 401, error: "Unauthorized" };
   if (!real.isAdmin) return { ok: false, status: 403, error: "Forbidden" };
+  return { ok: true, session: real };
+}
+
+export async function requireApiAdminOrInternal(): Promise<
+  { ok: true; session: VerifiedSession } | { ok: false; status: number; error: string }
+> {
+  const result = await requireApiSession();
+  if (!result.ok) return result;
+  const groups = result.session.groups;
+  if (
+    !groups.includes(COGNITO_GROUPS.ADMIN) &&
+    !groups.includes(COGNITO_GROUPS.INTERNAL)
+  ) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+  return result;
+}
+
+export async function requireRealApiAdminOrInternal(): Promise<
+  { ok: true; session: VerifiedSession } | { ok: false; status: number; error: string }
+> {
+  const real = await verifyRealSession();
+  if (!real) return { ok: false, status: 401, error: "Unauthorized" };
+  if (
+    !real.groups.includes(COGNITO_GROUPS.ADMIN) &&
+    !real.groups.includes(COGNITO_GROUPS.INTERNAL)
+  ) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
   return { ok: true, session: real };
 }

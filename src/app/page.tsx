@@ -53,11 +53,14 @@ export default function DocumentsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const hasUserMgmtAccess =
+    user?.isAdmin || user?.groups.includes("InternalEmployee");
+
   useEffect(() => {
-    if (!authLoading && user?.isAdmin) {
+    if (!authLoading && hasUserMgmtAccess) {
       router.replace("/admin");
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, hasUserMgmtAccess, router]);
 
   const fetchPage = useCallback(
     async (cursorArg: string | null, append: boolean) => {
@@ -80,7 +83,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     if (authLoading || !user) return;
-    if (user.isAdmin) return;
+    if (hasUserMgmtAccess) return;
     let cancelled = false;
     (async () => {
       setInitialLoading(true);
@@ -100,7 +103,7 @@ export default function DocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, fetchPage]);
+  }, [authLoading, user, hasUserMgmtAccess, fetchPage]);
 
   async function loadMore() {
     if (!cursor || loadingMore) return;

@@ -6,6 +6,7 @@ import {
   InvalidPasswordException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getClientId } from "@/lib/cognito";
+import { assertRoleForMode, isLoginMode, type LoginMode } from "@/lib/loginRole";
 import { setSessionCookie } from "@/lib/session";
 
 type ChallengeName = "NEW_PASSWORD_REQUIRED" | "SOFTWARE_TOKEN_MFA";
@@ -16,6 +17,7 @@ interface ChallengeBody {
   session?: string;
   newPassword?: string;
   mfaCode?: string;
+  mode?: LoginMode;
 }
 
 export async function POST(request: Request) {
@@ -27,6 +29,7 @@ export async function POST(request: Request) {
   }
 
   const { challengeName, customerId, session } = body;
+  const mode: LoginMode = isLoginMode(body.mode) ? body.mode : "customer";
 
   if (!challengeName || !customerId || !session) {
     return NextResponse.json(
@@ -47,8 +50,10 @@ export async function POST(request: Request) {
     challengeResponses = {
       USERNAME: customerId,
       NEW_PASSWORD: body.newPassword,
-      "userAttributes.email": `${customerId}@tellian.local`,
     };
+    if (mode === "customer") {
+      challengeResponses["userAttributes.email"] = `${customerId}@tellian.local`;
+    }
   } else if (challengeName === "SOFTWARE_TOKEN_MFA") {
     if (!body.mfaCode) {
       return NextResponse.json(
@@ -94,8 +99,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (challengeName === "NEW_PASSWORD_REQUIRED") {
+    if (challengeName === "NEW_PASSWORD_REQUIRED" && mode === "customer") {
       return NextResponse.json({ status: "PASSWORD_CHANGED" });
+    }
+
+    const role = assertRoleForMode(auth.IdToken, mode);
+    if (!role.ok) {
+      return NextResponse.json({ error: role.error }, { status: 403 });
     }
 
     await setSessionCookie({

@@ -27,11 +27,17 @@ export default function AdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createdNotice, setCreatedNotice] = useState<string | null>(null);
 
+  const isInternal = user?.groups.includes("InternalEmployee") ?? false;
+  const canViewUsers = (user?.isAdmin ?? false) || isInternal;
+  const canManageUsers = user?.isAdmin ?? false;
+  const canImpersonateUsers = canManageUsers || isInternal;
+  const showActionsColumn = canManageUsers || canImpersonateUsers;
+
   useEffect(() => {
-    if (!loading && (!user || !user.isAdmin)) {
+    if (!loading && (!user || !canViewUsers)) {
       router.replace("/");
     }
-  }, [user, loading, router]);
+  }, [user, loading, canViewUsers, router]);
 
   const loadUsers = useCallback(async () => {
     setFetching(true);
@@ -54,10 +60,10 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (user?.isAdmin) void loadUsers();
-  }, [user, loadUsers]);
+    if (canViewUsers) void loadUsers();
+  }, [canViewUsers, loadUsers]);
 
-  if (loading || !user || !user.isAdmin) {
+  if (loading || !user || !canViewUsers) {
     return (
       <PortalLayout>
         <div style={{ padding: "96px 0" }} className="flex justify-center">
@@ -136,28 +142,30 @@ export default function AdminPage() {
               {t("admin.subtext")}
             </p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{
-              backgroundColor: "var(--tellian-dark)",
-              color: "#FFFFFF",
-              border: "none",
-              borderRadius: 0,
-              padding: "14px 24px",
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <UserPlus size={16} />
-            {t("admin.create")}
-          </button>
+          {canManageUsers && (
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{
+                backgroundColor: "var(--tellian-dark)",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 0,
+                padding: "14px 24px",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <UserPlus size={16} />
+              {t("admin.create")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -197,7 +205,10 @@ export default function AdminPage() {
         <div
           className="hidden md:grid"
           style={{
-            gridTemplateColumns: "2fr 1.5fr 1fr 1.5fr",
+            gridTemplateColumns: showActionsColumn
+              ? "2fr 1.5fr 1fr 2fr"
+              : "2fr 1.5fr 1fr",
+            gap: "16px",
             padding: "16px 0",
             borderBottom: "1px solid var(--tellian-line)",
             fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -211,7 +222,7 @@ export default function AdminPage() {
           <span>{t("admin.col.username")}</span>
           <span>{t("admin.col.role")}</span>
           <span>{t("admin.col.status")}</span>
-          <span>{t("admin.col.actions")}</span>
+          {showActionsColumn && <span>{t("admin.col.actions")}</span>}
         </div>
 
         {fetching ? (
@@ -231,6 +242,8 @@ export default function AdminPage() {
               onToggle={() => handleToggleEnabled(u)}
               onImpersonate={() => handleImpersonate(u)}
               isSelf={u.username === user.username}
+              canManage={canManageUsers}
+              canImpersonate={canImpersonateUsers}
               t={t}
             />
           ))
@@ -258,6 +271,8 @@ function UserRow({
   onToggle,
   onImpersonate,
   isSelf,
+  canManage,
+  canImpersonate,
   t,
 }: {
   user: AdminUser;
@@ -265,17 +280,23 @@ function UserRow({
   onToggle: () => void;
   onImpersonate: () => void;
   isSelf: boolean;
+  canManage: boolean;
+  canImpersonate: boolean;
   t: (key: any) => string;
 }) {
   const currentRole = (user.groups[0] ?? "User") as Role;
-  const canImpersonate =
-    !isSelf && user.enabled && currentRole !== "Admin";
+  const canImpersonateRow =
+    canImpersonate && !isSelf && user.enabled && currentRole !== "Admin";
+  const roleSelectDisabled = !canManage || isSelf;
+  const showActions = canManage || canImpersonate;
 
   return (
     <div
       className="md:grid md:items-center"
       style={{
-        gridTemplateColumns: "2fr 1.5fr 1fr 1.5fr",
+        gridTemplateColumns: showActions
+          ? "2fr 1.5fr 1fr 2fr"
+          : "2fr 1.5fr 1fr",
         padding: "20px 0",
         borderBottom: "1px solid var(--tellian-line)",
         gap: "16px",
@@ -287,33 +308,49 @@ function UserRow({
           fontSize: "15px",
           fontWeight: 400,
           color: "var(--tellian-dark)",
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
+        title={user.username}
       >
         {user.username}
       </div>
 
       <div>
-        <select
-          value={currentRole}
-          onChange={(e) => onChangeRole(e.target.value as Role)}
-          disabled={isSelf}
-          style={{
-            backgroundColor: "transparent",
-            border: "1px solid var(--tellian-line)",
-            padding: "8px 12px",
-            fontFamily: "inherit",
-            fontSize: "13px",
-            color: "var(--tellian-dark)",
-            cursor: isSelf ? "not-allowed" : "pointer",
-            opacity: isSelf ? 0.5 : 1,
-          }}
-        >
-          {ROLES.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+        {!canManage ? (
+          <span
+            style={{
+              fontSize: "13px",
+              color: "var(--tellian-dark)",
+            }}
+          >
+            {currentRole}
+          </span>
+        ) : (
+          <select
+            value={currentRole}
+            onChange={(e) => onChangeRole(e.target.value as Role)}
+            disabled={roleSelectDisabled}
+            style={{
+              backgroundColor: "transparent",
+              border: "1px solid var(--tellian-line)",
+              padding: "8px 12px",
+              fontFamily: "inherit",
+              fontSize: "13px",
+              color: "var(--tellian-dark)",
+              cursor: roleSelectDisabled ? "not-allowed" : "pointer",
+              opacity: roleSelectDisabled ? 0.5 : 1,
+            }}
+          >
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div
@@ -325,49 +362,57 @@ function UserRow({
         {user.enabled ? t("admin.status.enabled") : t("admin.status.disabled")}
       </div>
 
-      <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap">
-        <button
-          onClick={onToggle}
-          disabled={isSelf}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--tellian-line)",
-            padding: "8px 16px",
-            fontFamily: "inherit",
-            fontSize: "12px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--tellian-dark)",
-            cursor: isSelf ? "not-allowed" : "pointer",
-            opacity: isSelf ? 0.5 : 1,
-          }}
-        >
-          {user.enabled ? t("admin.action.disable") : t("admin.action.enable")}
-        </button>
-        <button
-          onClick={onImpersonate}
-          disabled={!canImpersonate}
-          title={t("admin.action.impersonate")}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--tellian-line)",
-            padding: "8px 16px",
-            fontFamily: "inherit",
-            fontSize: "12px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--tellian-dark)",
-            cursor: canImpersonate ? "pointer" : "not-allowed",
-            opacity: canImpersonate ? 1 : 0.4,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <LogIn size={12} />
-          {t("admin.action.impersonate")}
-        </button>
-      </div>
+      {showActions && (
+        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap">
+          {canManage && (
+            <button
+              onClick={onToggle}
+              disabled={isSelf}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--tellian-line)",
+                padding: "8px 16px",
+                fontFamily: "inherit",
+                fontSize: "12px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "var(--tellian-dark)",
+                cursor: isSelf ? "not-allowed" : "pointer",
+                opacity: isSelf ? 0.5 : 1,
+              }}
+            >
+              {user.enabled
+                ? t("admin.action.disable")
+                : t("admin.action.enable")}
+            </button>
+          )}
+          {canImpersonate && (
+            <button
+              onClick={onImpersonate}
+              disabled={!canImpersonateRow}
+              title={t("admin.action.impersonate")}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--tellian-line)",
+                padding: "8px 16px",
+                fontFamily: "inherit",
+                fontSize: "12px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "var(--tellian-dark)",
+                cursor: canImpersonateRow ? "pointer" : "not-allowed",
+                opacity: canImpersonateRow ? 1 : 0.4,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <LogIn size={12} />
+              {t("admin.action.impersonate")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -382,24 +427,41 @@ function CreateUserModal({
   t: (key: any) => string;
 }) {
   const [customerId, setCustomerId] = useState("");
+  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("User");
   const [tempPassword, setTempPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isStaff = role === "Admin" || role === "InternalEmployee";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
+      const payload: {
+        role: Role;
+        temporaryPassword?: string;
+        customerId?: string;
+        userId?: string;
+        email?: string;
+      } = {
+        role,
+        temporaryPassword: tempPassword || undefined,
+      };
+      if (isStaff) {
+        payload.userId = userId.trim();
+        payload.email = email.trim();
+      } else {
+        payload.customerId = customerId.trim();
+      }
+
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId,
-          role,
-          temporaryPassword: tempPassword || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as {
         error?: string;
@@ -473,15 +535,6 @@ function CreateUserModal({
 
         <form onSubmit={handleSubmit}>
           <div>
-            <label style={modalLabel}>{t("admin.modal.customerId")}</label>
-            <input
-              required
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              style={modalInput}
-            />
-          </div>
-          <div style={{ marginTop: "20px" }}>
             <label style={modalLabel}>{t("admin.modal.role")}</label>
             <select
               value={role}
@@ -495,6 +548,39 @@ function CreateUserModal({
               ))}
             </select>
           </div>
+          {isStaff ? (
+            <>
+              <div style={{ marginTop: "20px" }}>
+                <label style={modalLabel}>{t("admin.modal.userId")}</label>
+                <input
+                  required
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  style={modalInput}
+                />
+              </div>
+              <div style={{ marginTop: "20px" }}>
+                <label style={modalLabel}>{t("admin.modal.email")}</label>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={modalInput}
+                />
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: "20px" }}>
+              <label style={modalLabel}>{t("admin.modal.customerId")}</label>
+              <input
+                required
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                style={modalInput}
+              />
+            </div>
+          )}
           <div style={{ marginTop: "20px" }}>
             <label style={modalLabel}>{t("admin.modal.tempPassword")}</label>
             <input
@@ -503,15 +589,6 @@ function CreateUserModal({
               onChange={(e) => setTempPassword(e.target.value)}
               style={modalInput}
             />
-            <p
-              style={{
-                marginTop: "6px",
-                fontSize: "12px",
-                color: "var(--tellian-muted)",
-              }}
-            >
-              {t("admin.modal.tempPassword.hint")}
-            </p>
           </div>
 
           {error && (

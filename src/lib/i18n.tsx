@@ -8,6 +8,7 @@ export type Locale = "de" | "en";
 const translations = {
   // Login page
   "login.eyebrow": { de: "Mandanten-Portal", en: "Client Portal" },
+  "login.staff.eyebrow": { de: "Mitarbeiter-Portal", en: "Staff Portal" },
   "login.headline1": { de: "Willkommen", en: "Welcome" },
   "login.headline2": { de: "zurück.", en: "back." },
   "login.subtext": {
@@ -18,6 +19,19 @@ const translations = {
   "login.customerId.placeholder": {
     de: "z. B. CUST-12345",
     en: "e.g. CUST-12345",
+  },
+  "login.email.label": { de: "E-Mail", en: "Email" },
+  "login.email.placeholder": {
+    de: "z. B. name@tellian.com",
+    en: "e.g. name@tellian.com",
+  },
+  "login.altLink.staff": {
+    de: "Mitarbeiter-Anmeldung",
+    en: "Staff sign in",
+  },
+  "login.altLink.customer": {
+    de: "Kunden-Anmeldung",
+    en: "Customer sign in",
   },
   "login.password.label": { de: "Passwort", en: "Password" },
   "login.submit": { de: "Anmelden", en: "Sign in" },
@@ -121,14 +135,12 @@ const translations = {
     en: "Create new user",
   },
   "admin.modal.customerId": { de: "Kunden-ID", en: "Customer ID" },
+  "admin.modal.userId": { de: "Benutzer-ID", en: "User ID" },
+  "admin.modal.email": { de: "E-Mail", en: "Email" },
   "admin.modal.role": { de: "Rolle", en: "Role" },
   "admin.modal.tempPassword": {
-    de: "Temporäres Passwort (optional)",
-    en: "Temporary password (optional)",
-  },
-  "admin.modal.tempPassword.hint": {
-    de: "Leer lassen, um ein sicheres Passwort zu generieren.",
-    en: "Leave empty to auto-generate a secure password.",
+    de: "Temporäres Passwort",
+    en: "Temporary password",
   },
   "admin.modal.cancel": { de: "Abbrechen", en: "Cancel" },
   "admin.modal.submit": { de: "Erstellen", en: "Create" },
@@ -182,8 +194,16 @@ const translations = {
     en: "Customer ID is required.",
   },
   "validation.customerId.invalid": {
-    de: "Bitte geben Sie eine gültige Kunden-ID ein (keine E-Mail-Adresse).",
-    en: "Please enter a valid customer ID (not an email address).",
+    de: "Bitte geben Sie eine gültige Kunden-ID ein",
+    en: "Please enter a valid customer ID.",
+  },
+  "validation.email.required": {
+    de: "E-Mail-Adresse ist erforderlich.",
+    en: "Email address is required.",
+  },
+  "validation.email.invalid": {
+    de: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+    en: "Please enter a valid email address.",
   },
   "validation.password.required": {
     de: "Passwort ist erforderlich.",

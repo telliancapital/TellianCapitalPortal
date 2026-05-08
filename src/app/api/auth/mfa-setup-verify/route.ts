@@ -7,12 +7,14 @@ import {
   CodeMismatchException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getClientId } from "@/lib/cognito";
+import { assertRoleForMode, isLoginMode, type LoginMode } from "@/lib/loginRole";
 import { setSessionCookie } from "@/lib/session";
 
 interface VerifyBody {
   session?: string;
   customerId?: string;
   code?: string;
+  mode?: LoginMode;
 }
 
 export async function POST(request: Request) {
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
   }
 
   const { session, customerId, code } = body;
+  const mode: LoginMode = isLoginMode(body.mode) ? body.mode : "customer";
   if (!session || !customerId || !code) {
     return NextResponse.json(
       { error: "session, customerId and code are required" },
@@ -71,6 +74,11 @@ export async function POST(request: Request) {
         { error: "Authentication failed" },
         { status: 401 },
       );
+    }
+
+    const role = assertRoleForMode(auth.IdToken, mode);
+    if (!role.ok) {
+      return NextResponse.json({ error: role.error }, { status: 403 });
     }
 
     await setSessionCookie({
