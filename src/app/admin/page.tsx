@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, KeyRound, Loader2, LogIn, Search, UserPlus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, KeyRound, Loader2, LogIn, Search, Shield, ShieldOff, UserPlus, X } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -15,6 +15,7 @@ interface AdminUser {
   enabled: boolean;
   status: string;
   groups: string[];
+  mfaEnabled: boolean;
 }
 
 export default function AdminPage() {
@@ -143,6 +144,31 @@ export default function AdminPage() {
     setCreatedNotice(
       `${t("admin.resetPassword.notice")} ${data.temporaryPassword} (${u.username})`,
     );
+  }
+
+  async function handleToggleMfa(u: AdminUser) {
+    // Optimistic update
+    setUsers(prev => prev.map(user => 
+      user.username === u.username ? { ...user, mfaEnabled: !u.mfaEnabled } : user
+    ));
+
+    try {
+      const res = await fetch("/api/admin/toggle-mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u.username, mfaEnabled: !u.mfaEnabled }),
+      });
+      if (!res.ok) {
+        // Rollback on error
+        await loadUsers();
+      } else {
+        // Add a small delay before refreshing from backend to account for Cognito consistency
+        setTimeout(() => loadUsers(), 1500);
+      }
+    } catch (e) {
+      console.error("Failed to toggle MFA:", e);
+      await loadUsers();
+    }
   }
 
   return (
@@ -292,8 +318,8 @@ export default function AdminPage() {
           className="hidden md:grid md:items-center"
           style={{
             gridTemplateColumns: showActionsColumn
-              ? "2fr 1.5fr 1fr 2fr"
-              : "2fr 1.5fr 1fr",
+              ? "2fr 1.5fr 1fr 1fr 2fr"
+              : "2fr 1.5fr 1fr 1fr",
             gap: "16px",
             padding: "16px 0",
             borderBottom: "1px solid var(--tellian-line)",
@@ -308,6 +334,7 @@ export default function AdminPage() {
           <span>{t("admin.col.username")}</span>
           <span>{t("admin.col.role")}</span>
           <span>{t("admin.col.status")}</span>
+          <span>{t("admin.col.mfa")}</span>
           {showActionsColumn && <span>{t("admin.col.actions")}</span>}
         </div>
 
@@ -326,6 +353,7 @@ export default function AdminPage() {
               user={u}
               onChangeRole={(role) => handleChangeRole(u.username, role)}
               onToggle={() => handleToggleEnabled(u)}
+              onToggleMfa={() => handleToggleMfa(u)}
               onImpersonate={() => handleImpersonate(u)}
               onResetPassword={() => handleResetPassword(u)}
               isSelf={u.username === user.username}
@@ -412,6 +440,7 @@ function UserRow({
   user,
   onChangeRole,
   onToggle,
+  onToggleMfa,
   onImpersonate,
   onResetPassword,
   isSelf,
@@ -422,6 +451,7 @@ function UserRow({
   user: AdminUser;
   onChangeRole: (role: Role) => void;
   onToggle: () => void;
+  onToggleMfa: () => void;
   onImpersonate: () => void;
   onResetPassword: () => void;
   isSelf: boolean;
@@ -440,8 +470,8 @@ function UserRow({
       className="md:grid md:items-center"
       style={{
         gridTemplateColumns: showActions
-          ? "2fr 1.5fr 1fr 2fr"
-          : "2fr 1.5fr 1fr",
+          ? "2fr 1.5fr 1fr 1fr 2fr"
+          : "2fr 1.5fr 1fr 1fr",
         padding: "16px 0",
         minHeight: "64px",
         borderBottom: "1px solid var(--tellian-line)",
@@ -502,6 +532,23 @@ function UserRow({
         {user.enabled ? t("admin.status.enabled") : t("admin.status.disabled")}
       </div>
 
+      <div
+        style={{
+          fontSize: "13px",
+          color: user.mfaEnabled ? "#059669" : "var(--tellian-stone)",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+        }}
+      >
+        {user.mfaEnabled ? (
+          <Shield size={14} style={{ color: "#059669" }} />
+        ) : (
+          <ShieldOff size={14} style={{ color: "var(--tellian-stone)" }} />
+        )}
+        {user.mfaEnabled ? t("admin.mfa.on") : t("admin.mfa.off")}
+      </div>
+
       {showActions && (
         <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap items-center">
           {canManage && (
@@ -528,6 +575,30 @@ function UserRow({
               {user.enabled
                 ? t("admin.action.disable")
                 : t("admin.action.enable")}
+            </button>
+          )}
+          {canManage && (
+            <button
+              onClick={onToggleMfa}
+              disabled={isSelf}
+              title={user.mfaEnabled ? t("admin.action.mfaDisable") : t("admin.action.mfaEnable")}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--tellian-line)",
+                padding: "0 10px",
+                height: "32px",
+                fontFamily: "inherit",
+                fontSize: "12px",
+                color: user.mfaEnabled ? "#059669" : "var(--tellian-stone)",
+                cursor: isSelf ? "not-allowed" : "pointer",
+                opacity: isSelf ? 0.5 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}
+            >
+              {user.mfaEnabled ? <Shield size={16} /> : <ShieldOff size={16} />}
             </button>
           )}
           {canManage && (

@@ -68,9 +68,6 @@ export async function POST(request: Request) {
         { status: 401 },
       );
     }
-    return NextResponse.json(
-      { error: "MFA setup failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "MFA setup failed" }, { status: 500 });
   }
 }

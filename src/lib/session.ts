@@ -17,7 +17,6 @@ export interface ImpersonationData {
 export interface SessionData {
   idToken: string;
   accessToken: string;
-  refreshToken?: string;
   expiresAt: number;
 }
 
@@ -149,31 +148,3 @@ export async function clearImpersonationCookie() {
   cookieStore.delete(IMPERSONATION_COOKIE);
 }
 
-const MFA_SKIPPED_COOKIE = "tellian_mfa_skipped";
-
-function getMfaCookieName(username: string): string {
-  const hex = Buffer.from(username).toString("hex");
-  return `${MFA_SKIPPED_COOKIE}_${hex}`;
-}
-
-export async function setMfaSkippedCookie(username: string, skipped: boolean) {
-  const cookieStore = await cookies();
-  const cookieName = getMfaCookieName(username);
-  if (skipped) {
-    cookieStore.set(cookieName, "true", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    });
-  } else {
-    cookieStore.delete(cookieName);
-  }
-}
-
-export async function getMfaSkippedCookie(username: string): Promise<boolean> {
-  const cookieStore = await cookies();
-  const cookieName = getMfaCookieName(username);
-  return cookieStore.get(cookieName)?.value === "true";
-}

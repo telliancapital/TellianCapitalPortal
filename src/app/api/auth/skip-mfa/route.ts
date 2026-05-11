@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   AdminInitiateAuthCommand,
   AdminSetUserMFAPreferenceCommand,
+  AdminUpdateUserAttributesCommand,
   NotAuthorizedException,
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -39,24 +40,40 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Disable optional MFA for this user so subsequent logins don't
-    // trigger MFA_SETUP challenge again (they rely on the skip cookie,
-    // but this also ensures Cognito doesn't keep prompting for setup).
+    // The user has chosen to skip MFA. Persist this opt-out so they are
+    // not prompted on every subsequent login until the admin re-enables
+    // MFA via the dashboard:
+    //   - Disable Cognito's MFA preference (also required so the
+    //     ADMIN_USER_PASSWORD_AUTH call below isn't itself challenged).
+    //   - Write MFA_DISABLED to the attribute flag that /api/auth/me and
+    //     /api/auth/check-mfa-skip consult to decide whether to prompt.
     try {
-      await cognito.send(
-        new AdminSetUserMFAPreferenceCommand({
-          UserPoolId: getUserPoolId(),
-          Username: customerId,
-          SoftwareTokenMfaSettings: {
-            Enabled: false,
-            PreferredMfa: false,
-          },
-        }),
-      );
+      await Promise.all([
+        cognito.send(
+          new AdminSetUserMFAPreferenceCommand({
+            UserPoolId: getUserPoolId(),
+            Username: customerId,
+            SoftwareTokenMfaSettings: { Enabled: false, PreferredMfa: false },
+          }),
+        ),
+        cognito
+          .send(
+            new AdminUpdateUserAttributesCommand({
+              UserPoolId: getUserPoolId(),
+              Username: customerId,
+              UserAttributes: [
+                { Name: "nickname", Value: "MFA_DISABLED" },
+                { Name: "profile", Value: "MFA_DISABLED" },
+                { Name: "website", Value: "MFA_DISABLED" },
+              ],
+            }),
+          )
+          .catch((err) =>
+            console.warn("Failed to write MFA_DISABLED flag on skip", err),
+          ),
+      ]);
     } catch (mfaErr) {
-      // Non-fatal: log and continue. The skip cookie will handle
-      // subsequent login attempts even if this call fails.
-      console.warn("AdminSetUserMFAPreference failed (non-fatal):", mfaErr);
+      console.warn("MFA preference reset failed (non-fatal):", mfaErr);
     }
 
     const response = await cognito.send(
@@ -100,7 +117,6 @@ export async function POST(request: Request) {
     await setSessionCookie({
       idToken: auth.IdToken,
       accessToken: auth.AccessToken,
-      refreshToken: auth.RefreshToken,
       expiresAt: Date.now() + (auth.ExpiresIn ?? 3600) * 1000,
     });
 

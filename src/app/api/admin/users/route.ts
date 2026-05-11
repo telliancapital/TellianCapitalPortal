@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   AdminListGroupsForUserCommand,
+  AdminGetUserCommand,
   ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getUserPoolId } from "@/lib/cognito";
@@ -24,25 +25,51 @@ export async function GET() {
       (list.Users ?? []).map(async (u) => {
         const username = u.Username ?? "";
         let groups: string[] = [];
+        let mfaEnabled = false;
+
         try {
-          const g = await cognito.send(
-            new AdminListGroupsForUserCommand({
-              UserPoolId: getUserPoolId(),
-              Username: username,
-            }),
-          );
-          groups = (g.Groups ?? [])
+          const [groupsData, userData] = await Promise.all([
+            cognito.send(
+              new AdminListGroupsForUserCommand({
+                UserPoolId: getUserPoolId(),
+                Username: username,
+              }),
+            ),
+            cognito.send(
+              new AdminGetUserCommand({
+                UserPoolId: getUserPoolId(),
+                Username: username,
+              }),
+            ),
+          ]);
+
+          groups = (groupsData.Groups ?? [])
             .map((x) => x.GroupName)
             .filter((x): x is string => Boolean(x));
-        } catch {
-          groups = [];
+
+          // Check if MFA is enabled in UserMFASettingList, as a preference, or via our standard attribute flags
+          const attributes = ["nickname", "profile", "website"];
+          const mfaFlag = userData.UserAttributes?.some(a => 
+            attributes.includes(a.Name!) && a.Value === "MFA_ENABLED"
+          ) ?? false;
+          mfaEnabled =
+            (userData.UserMFASettingList ?? []).includes("SOFTWARE_TOKEN_MFA") ||
+            userData.PreferredMfaSetting === "SOFTWARE_TOKEN_MFA" ||
+            mfaFlag;
+        } catch (err) {
+          console.warn(
+            `Failed to fetch extra details for user ${username}`,
+            err,
+          );
         }
+
         return {
           username,
           enabled: u.Enabled ?? false,
           status: u.UserStatus ?? "UNKNOWN",
           createdAt: u.UserCreateDate?.toISOString(),
           groups,
+          mfaEnabled,
         };
       }),
     );

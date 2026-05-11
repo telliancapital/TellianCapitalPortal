@@ -196,12 +196,21 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       }
       const me = (await meRes.json()) as {
         mfaEnabled?: boolean;
-        mfaSkipped?: boolean;
+        mfaRequired?: boolean;
       };
-      if (me.mfaEnabled || me.mfaSkipped) {
+      // MFA already configured by the user → straight to dashboard.
+      if (me.mfaEnabled) {
         window.location.assign("/");
         return;
       }
+      // Admin has not forced MFA → straight to dashboard.
+      if (!me.mfaRequired) {
+        window.location.assign("/");
+        return;
+      }
+      // Admin forced MFA but user has no TOTP yet → show setup screen
+      // (with a Skip button that performs a one-time bypass for this
+      // session, leaving the admin's flag intact).
       const initRes = await fetch("/api/auth/optional-mfa-init", {
         method: "POST",
       });
@@ -255,10 +264,12 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
 
   async function handleOptionalMfaSkip() {
     if (stage.kind !== "optionalMfaSetup") return;
+    // Persist the opt-out so the user is not prompted again on every
+    // future login (until admin re-enables MFA from the dashboard).
     try {
-      await fetch("/api/auth/record-mfa-skip", { method: "POST" });
+      await fetch("/api/auth/disable-mfa", { method: "POST" });
     } catch (e) {
-      console.error("Failed to record MFA skip:", e);
+      console.error("Failed to persist MFA skip:", e);
     }
     window.location.assign("/");
   }
@@ -356,17 +367,8 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     setError(null);
     setLoading(true);
     try {
-      // Record the skip preference FIRST so it's persisted even if
-      // the subsequent skip-mfa call has issues.
-      try {
-        await fetch("/api/auth/record-mfa-skip", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: customerIdArg }),
-        });
-      } catch (e) {
-        console.error("Failed to record MFA skip:", e);
-      }
+      // The skip preference is now managed entirely through Cognito attributes 
+      // in the /api/auth/skip-mfa call below. We no longer use cookies.
 
       const skipRes = await fetch("/api/auth/skip-mfa", {
         method: "POST",

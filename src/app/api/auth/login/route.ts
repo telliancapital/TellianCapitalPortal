@@ -67,7 +67,6 @@ export async function POST(request: Request) {
     await setSessionCookie({
       idToken: auth.IdToken,
       accessToken: auth.AccessToken,
-      refreshToken: auth.RefreshToken,
       expiresAt: Date.now() + (auth.ExpiresIn ?? 3600) * 1000,
     });
 
