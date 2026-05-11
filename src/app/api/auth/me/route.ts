@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { GetUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito } from "@/lib/cognito";
 import { verifySession } from "@/lib/dal";
-import { clearSessionCookie } from "@/lib/session";
+import { clearSessionCookie, getMfaSkippedCookie } from "@/lib/session";
 
 const SESSION_COOKIE = "tellian_session";
 
@@ -31,6 +31,8 @@ export async function GET() {
     // Best-effort — fall back to false if Cognito is unreachable.
   }
 
+  const mfaSkipped = await getMfaSkippedCookie(session.username);
+
   return NextResponse.json({
     authenticated: true,
     username: session.username,
@@ -39,5 +41,6 @@ export async function GET() {
     isAdmin: session.isAdmin,
     impersonatedBy: session.impersonatedBy ?? null,
     mfaEnabled,
+    mfaSkipped,
   });
 }

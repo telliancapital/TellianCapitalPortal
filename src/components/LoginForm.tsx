@@ -15,6 +15,7 @@ type Stage =
       kind: "newPassword" | "mfa";
       session: string;
       customerId: string;
+      email?: string;
     }
   | {
       kind: "mfaSetup";
@@ -33,6 +34,7 @@ interface LoginResponse {
   challengeName?: string;
   session?: string;
   customerId?: string;
+  email?: string;
   error?: string;
 }
 
@@ -43,6 +45,7 @@ type ValidationKey =
   | "validation.email.invalid"
   | "validation.password.required"
   | "validation.password.policy"
+  | "validation.password.mismatch"
   | "validation.mfaCode";
 
 function validateCustomerId(v: string): ValidationKey | null {
@@ -133,6 +136,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [setupCode, setSetupCode] = useState("");
   const [stage, setStage] = useState<Stage>({ kind: "credentials" });
@@ -146,6 +150,8 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     null,
   );
   const [newPasswordError, setNewPasswordError] =
+    useState<ValidationKey | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] =
     useState<ValidationKey | null>(null);
   const [mfaCodeError, setMfaCodeError] = useState<ValidationKey | null>(null);
   const [setupCodeError, setSetupCodeError] = useState<ValidationKey | null>(
@@ -188,8 +194,11 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
         window.location.assign("/");
         return;
       }
-      const me = (await meRes.json()) as { mfaEnabled?: boolean };
-      if (me.mfaEnabled) {
+      const me = (await meRes.json()) as {
+        mfaEnabled?: boolean;
+        mfaSkipped?: boolean;
+      };
+      if (me.mfaEnabled || me.mfaSkipped) {
         window.location.assign("/");
         return;
       }
@@ -244,12 +253,20 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     }
   }
 
-  function handleOptionalMfaSkip() {
+  async function handleOptionalMfaSkip() {
     if (stage.kind !== "optionalMfaSetup") return;
+    try {
+      await fetch("/api/auth/record-mfa-skip", { method: "POST" });
+    } catch (e) {
+      console.error("Failed to record MFA skip:", e);
+    }
     window.location.assign("/");
   }
 
-  function handleAuthResponse(data: LoginResponse) {
+  function handleAuthResponse(
+    data: LoginResponse,
+    options?: { passwordOverride?: string; noAutoSkip?: boolean },
+  ) {
     if (data.status === "OK") {
       void completePostLogin();
       return;
@@ -258,6 +275,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       setStage({ kind: "credentials" });
       setPassword("");
       setNewPassword("");
+      setConfirmPassword("");
       setError(null);
       setInfo(t("challenge.newPassword.success"));
       setLoading(false);
@@ -269,7 +287,43 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       data.customerId &&
       data.challengeName === "MFA_SETUP"
     ) {
-      void startMfaSetup(data.session, data.customerId);
+      if (options?.noAutoSkip) {
+        void startMfaSetup(data.session, data.customerId);
+        return;
+      }
+
+      const checkSkip = async () => {
+        try {
+          const checkRes = await fetch("/api/auth/check-mfa-skip", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: data.customerId }),
+          });
+          const checkData = await checkRes.json();
+          if (checkData.skipped) {
+            // User previously skipped — authenticate via admin API
+            const skipRes = await fetch("/api/auth/skip-mfa", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                customerId: data.customerId,
+                password: options?.passwordOverride || password,
+                mode,
+              }),
+            });
+            const skipData = (await skipRes.json()) as LoginResponse;
+            if (skipRes.ok && skipData.status === "OK") {
+              window.location.assign("/");
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("MFA skip check failed:", e);
+        }
+        // Not skipped or skip failed — show MFA setup UI
+        void startMfaSetup(data.session!, data.customerId!);
+      };
+      void checkSkip();
       return;
     }
     if (
@@ -286,6 +340,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
             : "mfa",
         session: data.session,
         customerId: data.customerId,
+        email: data.email,
       });
       setInfo(null);
       setLoading(false);
@@ -301,42 +356,47 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     setError(null);
     setLoading(true);
     try {
+      // Record the skip preference FIRST so it's persisted even if
+      // the subsequent skip-mfa call has issues.
+      try {
+        await fetch("/api/auth/record-mfa-skip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: customerIdArg }),
+        });
+      } catch (e) {
+        console.error("Failed to record MFA skip:", e);
+      }
+
       const skipRes = await fetch("/api/auth/skip-mfa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: customerIdArg }),
+        body: JSON.stringify({
+          customerId: customerIdArg,
+          password,
+          mode,
+        }),
       });
+      const skipData = (await skipRes.json()) as LoginResponse;
+
       if (!skipRes.ok) {
-        const skipErr = (await skipRes.json()) as { error?: string };
-        setError(skipErr.error ?? t("login.error"));
+        setError(skipData.error ?? t("login.error"));
         setLoading(false);
         return;
       }
 
-      const loginRes = await fetch(config.loginEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          [config.identifierBodyKey]: customerIdArg,
-          password,
-        }),
-      });
-      const data = (await loginRes.json()) as LoginResponse;
-      if (!loginRes.ok) {
-        setError(data.error ?? t("login.error"));
-        setLoading(false);
-        return;
-      }
-      if (data.status === "OK") {
+      // On OK or if Cognito still returns MFA_SETUP (which means the admin
+      // flow disabled it but the session is valid) — redirect to dashboard.
+      if (
+        skipData.status === "OK" ||
+        skipData.challengeName === "MFA_SETUP"
+      ) {
         window.location.assign("/");
         return;
       }
-      setStage({ kind: "credentials" });
-      setPassword("");
-      setMfaCode("");
-      setSetupCode("");
-      setInfo(null);
-      setError(t("challenge.mfaSetup.skipBlocked"));
+
+      // Any other unexpected challenge — show an error
+      setError(skipData.error ?? t("login.error"));
       setLoading(false);
     } catch {
       setError(t("login.error"));
@@ -421,6 +481,12 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       const err = validateNewPassword(newPassword);
       setNewPasswordError(err);
       if (err) return;
+
+      if (newPassword !== confirmPassword) {
+        setConfirmPasswordError("validation.password.mismatch");
+        return;
+      }
+      setConfirmPasswordError(null);
     } else {
       const err = validateMfaCode(mfaCode);
       setMfaCodeError(err);
@@ -439,6 +505,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
               : "SOFTWARE_TOKEN_MFA",
           session: stage.session,
           customerId: stage.customerId,
+          email: stage.email,
           newPassword: stage.kind === "newPassword" ? newPassword : undefined,
           mfaCode: stage.kind === "mfa" ? mfaCode : undefined,
           mode,
@@ -450,7 +517,16 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
         setLoading(false);
         return;
       }
-      handleAuthResponse(data);
+
+      if (stage.kind === "newPassword") {
+        const p = newPassword;
+        setPassword(p);
+        setNewPassword("");
+        setConfirmPassword("");
+        handleAuthResponse(data, { passwordOverride: p });
+      } else {
+        handleAuthResponse(data);
+      }
     } catch {
       setError(t("login.error"));
       setLoading(false);
@@ -682,18 +758,36 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
               style={{ marginTop: "64px" }}
             >
               {stage.kind === "newPassword" ? (
-                <Field
-                  id="newPassword"
-                  label={t("challenge.newPassword.label")}
-                  type="password"
-                  value={newPassword}
-                  onChange={(v) => {
-                    setNewPassword(v);
-                    if (newPasswordError) setNewPasswordError(null);
-                  }}
-                  autoComplete="new-password"
-                  error={newPasswordError ? t(newPasswordError) : null}
-                />
+                <>
+                  <Field
+                    id="newPassword"
+                    label={t("challenge.newPassword.label")}
+                    type="password"
+                    value={newPassword}
+                    onChange={(v) => {
+                      setNewPassword(v);
+                      if (newPasswordError) setNewPasswordError(null);
+                    }}
+                    autoComplete="new-password"
+                    error={newPasswordError ? t(newPasswordError) : null}
+                  />
+                  <div style={{ marginTop: "24px" }}>
+                    <Field
+                      id="confirmPassword"
+                      label={t("challenge.confirmPassword.label")}
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(v) => {
+                        setConfirmPassword(v);
+                        if (confirmPasswordError) setConfirmPasswordError(null);
+                      }}
+                      autoComplete="new-password"
+                      error={
+                        confirmPasswordError ? t(confirmPasswordError) : null
+                      }
+                    />
+                  </div>
+                </>
               ) : (
                 <Field
                   id="mfaCode"

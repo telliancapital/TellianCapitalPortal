@@ -51,6 +51,10 @@ const translations = {
     en: "For security reasons, please choose a new password.",
   },
   "challenge.newPassword.label": { de: "Neues Passwort", en: "New password" },
+  "challenge.confirmPassword.label": {
+    de: "Passwort bestätigen",
+    en: "Confirm password",
+  },
   "challenge.newPassword.success": {
     de: "Passwort aktualisiert. Bitte melden Sie sich mit Ihrem neuen Passwort an.",
     en: "Password updated. Please sign in with your new password.",
@@ -160,6 +164,14 @@ const translations = {
     de: "Passwort zurückgesetzt. Temporäres Passwort:",
     en: "Password reset. Temporary password:",
   },
+  "admin.search.placeholder": {
+    de: "Benutzer suchen...",
+    en: "Search users...",
+  },
+  "admin.pagination.info": {
+    de: "Seite {current} von {total}",
+    en: "Page {current} of {total}",
+  },
 
   // Impersonation
   "impersonation.banner": {
@@ -224,6 +236,10 @@ const translations = {
   "validation.mfaCode": {
     de: "Code muss aus 6 Ziffern bestehen.",
     en: "Code must be 6 digits.",
+  },
+  "validation.password.mismatch": {
+    de: "Die Passwörter stimmen nicht überein.",
+    en: "Passwords do not match.",
   },
 } as const;
 

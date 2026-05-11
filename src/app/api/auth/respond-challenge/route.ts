@@ -18,6 +18,7 @@ interface ChallengeBody {
   newPassword?: string;
   mfaCode?: string;
   mode?: LoginMode;
+  email?: string;
 }
 
 export async function POST(request: Request) {
@@ -51,9 +52,6 @@ export async function POST(request: Request) {
       USERNAME: customerId,
       NEW_PASSWORD: body.newPassword,
     };
-    if (mode === "customer") {
-      challengeResponses["userAttributes.email"] = `${customerId}@tellian.local`;
-    }
   } else if (challengeName === "SOFTWARE_TOKEN_MFA") {
     if (!body.mfaCode) {
       return NextResponse.json(
@@ -80,7 +78,30 @@ export async function POST(request: Request) {
       ChallengeResponses: challengeResponses,
     });
 
-    const response = await cognito.send(command);
+    let response;
+    try {
+      response = await cognito.send(command);
+    } catch (err: any) {
+      // If Cognito says email is missing, and we are in customer mode,
+      // try injecting the placeholder email.
+      if (
+        err?.message?.includes("email is missing") &&
+        mode === "customer" &&
+        challengeName === "NEW_PASSWORD_REQUIRED" &&
+        !challengeResponses["userAttributes.email"]
+      ) {
+        challengeResponses["userAttributes.email"] = `${customerId}@tellian.local`;
+        const retryCommand = new RespondToAuthChallengeCommand({
+          ClientId: getClientId(),
+          ChallengeName: challengeName,
+          Session: session,
+          ChallengeResponses: challengeResponses,
+        });
+        response = await cognito.send(retryCommand);
+      } else {
+        throw err;
+      }
+    }
 
     if (response.ChallengeName) {
       return NextResponse.json({
@@ -97,10 +118,6 @@ export async function POST(request: Request) {
         { error: "Authentication failed" },
         { status: 401 },
       );
-    }
-
-    if (challengeName === "NEW_PASSWORD_REQUIRED" && mode === "customer") {
-      return NextResponse.json({ status: "PASSWORD_CHANGED" });
     }
 
     const role = assertRoleForMode(auth.IdToken, mode);
@@ -126,15 +143,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    console.error("Challenge error:", err);
     if (err instanceof NotAuthorizedException) {
       return NextResponse.json(
-        { error: "Session expired or invalid" },
+        { error: err.message ?? "Session expired or invalid" },
         { status: 401 },
       );
     }
-    console.error("Challenge error", err);
+    const e = err as { message?: string };
     return NextResponse.json(
-      { error: "Challenge response failed" },
+      { error: e.message ?? "Challenge response failed" },
       { status: 500 },
     );
   }

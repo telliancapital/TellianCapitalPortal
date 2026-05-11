@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Loader2, LogIn, UserPlus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, KeyRound, Loader2, LogIn, Search, UserPlus, X } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -26,6 +26,9 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createdNotice, setCreatedNotice] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const isInternal = user?.groups.includes("InternalEmployee") ?? false;
   const canViewUsers = (user?.isAdmin ?? false) || isInternal;
@@ -62,6 +65,20 @@ export default function AdminPage() {
   useEffect(() => {
     if (canViewUsers) void loadUsers();
   }, [canViewUsers, loadUsers]);
+
+  const filteredUsers = users.filter((u) =>
+    u.username.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   if (loading || !user || !canViewUsers) {
     return (
@@ -188,6 +205,54 @@ export default function AdminPage() {
             </button>
           )}
         </div>
+
+        <div style={{ marginTop: "48px", maxWidth: "400px", position: "relative" }}>
+          <Search
+            size={18}
+            style={{
+              position: "absolute",
+              left: "0",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--tellian-stone)",
+            }}
+          />
+          <input
+            type="text"
+            placeholder={t("admin.search.placeholder") ?? "Search users..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 12px 12px 32px",
+              backgroundColor: "transparent",
+              border: "none",
+              borderBottom: "1px solid var(--tellian-line)",
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "14px",
+              color: "var(--tellian-dark)",
+              outline: "none",
+            }}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              style={{
+                position: "absolute",
+                right: "0",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--tellian-stone)",
+                padding: "4px",
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {createdNotice && (
@@ -250,12 +315,12 @@ export default function AdminPage() {
           <div style={{ padding: "48px 0" }} className="flex justify-center">
             <Loader2 className="animate-spin" />
           </div>
-        ) : users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <p style={{ padding: "48px 0", color: "var(--tellian-stone)" }}>
             —
           </p>
         ) : (
-          users.map((u) => (
+          paginatedUsers.map((u) => (
             <UserRow
               key={u.username}
               user={u}
@@ -271,6 +336,62 @@ export default function AdminPage() {
           ))
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div
+          className="flex items-center justify-between"
+          style={{
+            marginTop: "32px",
+            paddingTop: "24px",
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          }}
+        >
+          <div style={{ fontSize: "13px", color: "var(--tellian-stone)" }}>
+            {t("admin.pagination.info")
+              ?.replace("{current}", currentPage.toString())
+              ?.replace("{total}", totalPages.toString()) ||
+              `Page ${currentPage} of ${totalPages}`}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "40px",
+                height: "40px",
+                border: "1px solid var(--tellian-line)",
+                background: "transparent",
+                color: "var(--tellian-dark)",
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                opacity: currentPage === 1 ? 0.3 : 1,
+              }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "40px",
+                height: "40px",
+                border: "1px solid var(--tellian-line)",
+                background: "transparent",
+                color: "var(--tellian-dark)",
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                opacity: currentPage === totalPages ? 0.3 : 1,
+              }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <CreateUserModal

@@ -97,6 +97,7 @@ export async function POST(request: Request) {
         challengeName: response.ChallengeName,
         session: response.Session,
         customerId: resolvedUsername,
+        email,
       });
     }
 
