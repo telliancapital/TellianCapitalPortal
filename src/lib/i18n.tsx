@@ -155,6 +155,22 @@ const translations = {
     de: "Benutzer erstellt. Temporäres Passwort:",
     en: "User created. Temporary password:",
   },
+  "admin.toast.created.title": {
+    de: "Benutzer erfolgreich erstellt",
+    en: "User created successfully",
+  },
+  "admin.toast.createFailed.fallback": {
+    de: "Unerwarteter Fehler beim Erstellen des Benutzers.",
+    en: "An unexpected error occurred while creating the user.",
+  },
+  "admin.toast.usernameLabel": {
+    de: "Benutzername",
+    en: "Username",
+  },
+  "admin.modal.done": {
+    de: "Fertig",
+    en: "Done",
+  },
   "admin.action.impersonate": {
     de: "Als Benutzer anmelden",
     en: "Login as user",
@@ -200,6 +216,19 @@ const translations = {
   },
   "docs.loadMore": { de: "Mehr laden", en: "Load more" },
   "docs.download": { de: "Herunterladen", en: "Download" },
+  "docs.search.placeholder": {
+    de: "Berichte suchen...",
+    en: "Search reports...",
+  },
+  "docs.sort.label": { de: "Sortieren nach", en: "Sort by" },
+  "docs.sort.newest": { de: "Neueste zuerst", en: "Newest first" },
+  "docs.sort.oldest": { de: "Älteste zuerst", en: "Oldest first" },
+  "docs.sort.titleAsc": { de: "Titel A–Z", en: "Title A–Z" },
+  "docs.sort.titleDesc": { de: "Titel Z–A", en: "Title Z–A" },
+  "docs.pagination.info": {
+    de: "Seite {current} von {total}",
+    en: "Page {current} of {total}",
+  },
   "docs.empty.headline": {
     de: "Keine Berichte verfügbar.",
     en: "No reports available.",
@@ -207,6 +236,14 @@ const translations = {
   "docs.empty.subtitle": {
     de: "Sobald neue Dokumente bereitstehen, werden sie hier angezeigt.",
     en: "New documents will appear here once they are ready.",
+  },
+  "docs.empty.search.headline": {
+    de: "Keine Treffer.",
+    en: "No matches.",
+  },
+  "docs.empty.search.subtitle": {
+    de: "Passen Sie Ihre Suche an oder löschen Sie sie, um alle Berichte zu sehen.",
+    en: "Adjust your search or clear it to see all reports.",
   },
 
   // Document types

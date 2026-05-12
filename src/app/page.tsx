@@ -5,15 +5,21 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   FileText,
   Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
+const FETCH_BATCH = 200;
+
+type SortKey = "newest" | "oldest" | "titleAsc" | "titleDesc";
 
 interface Document {
   id: string;
@@ -34,6 +40,35 @@ interface DocumentsResponse {
   error?: string;
 }
 
+function extractDateFromFilename(filename: string): string | null {
+  const matches = [...filename.matchAll(/(?<!\d)(\d{8})(?!\d)/g)];
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const digits = matches[i][1];
+    const dd = Number(digits.slice(0, 2));
+    const mm = Number(digits.slice(2, 4));
+    const yyyy = Number(digits.slice(4, 8));
+    if (
+      yyyy < 1900 ||
+      yyyy > 2100 ||
+      mm < 1 ||
+      mm > 12 ||
+      dd < 1 ||
+      dd > 31
+    ) {
+      continue;
+    }
+    const date = new Date(Date.UTC(yyyy, mm - 1, dd));
+    if (
+      date.getUTCFullYear() === yyyy &&
+      date.getUTCMonth() === mm - 1 &&
+      date.getUTCDate() === dd
+    ) {
+      return date.toISOString();
+    }
+  }
+  return null;
+}
+
 function formatDate(iso: string | null, locale: string): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(locale === "de" ? "de-CH" : "en-GB", {
@@ -48,10 +83,11 @@ export default function DocumentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const hasUserMgmtAccess =
     user?.isAdmin || user?.groups.includes("InternalEmployee");
@@ -62,10 +98,12 @@ export default function DocumentsPage() {
     }
   }, [authLoading, hasUserMgmtAccess, router]);
 
-  const fetchPage = useCallback(
-    async (cursorArg: string | null, append: boolean) => {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
-      if (cursorArg) params.set("cursor", cursorArg);
+  const fetchAll = useCallback(async (): Promise<Document[]> => {
+    const all: Document[] = [];
+    let cursor: string | null = null;
+    do {
+      const params = new URLSearchParams({ limit: String(FETCH_BATCH) });
+      if (cursor) params.set("cursor", cursor);
       const res = await fetch(`/api/documents?${params}`, {
         cache: "no-store",
       });
@@ -73,13 +111,16 @@ export default function DocumentsPage() {
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to load");
       }
-      setDocuments((prev) =>
-        append ? [...prev, ...(data.documents ?? [])] : data.documents ?? [],
-      );
-      setCursor(data.nextCursor ?? null);
-    },
-    [],
-  );
+      for (const doc of data.documents ?? []) {
+        all.push({
+          ...doc,
+          lastModified: extractDateFromFilename(doc.filename),
+        });
+      }
+      cursor = data.nextCursor ?? null;
+    } while (cursor);
+    return all;
+  }, []);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -89,12 +130,12 @@ export default function DocumentsPage() {
       setInitialLoading(true);
       setError(null);
       try {
-        await fetchPage(null, false);
+        const all = await fetchAll();
+        if (!cancelled) setDocuments(all);
       } catch (e) {
         if (!cancelled) {
           setError((e as Error).message ?? "Failed to load");
           setDocuments([]);
-          setCursor(null);
         }
       } finally {
         if (!cancelled) setInitialLoading(false);
@@ -103,20 +144,52 @@ export default function DocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, hasUserMgmtAccess, fetchPage]);
+  }, [authLoading, user, hasUserMgmtAccess, fetchAll]);
 
-  async function loadMore() {
-    if (!cursor || loadingMore) return;
-    setLoadingMore(true);
-    setError(null);
-    try {
-      await fetchPage(cursor, true);
-    } catch (e) {
-      setError((e as Error).message ?? "Failed to load");
-    } finally {
-      setLoadingMore(false);
-    }
-  }
+  const filteredDocuments = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return documents;
+    return documents.filter((d) => {
+      const haystack = `${d.title} ${d.filename} ${d.customerId}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [documents, searchTerm]);
+
+  const sortedDocuments = useMemo(() => {
+    const list = [...filteredDocuments];
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case "newest":
+          return (b.lastModified ?? "").localeCompare(a.lastModified ?? "");
+        case "oldest":
+          return (a.lastModified ?? "").localeCompare(b.lastModified ?? "");
+        case "titleAsc":
+          return a.title.localeCompare(b.title);
+        case "titleDesc":
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [filteredDocuments, sortKey]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedDocuments.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedDocuments = sortedDocuments.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const updateSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const updateSort = (value: SortKey) => {
+    setSortKey(value);
+    setCurrentPage(1);
+  };
 
   const isAdmin = user?.isAdmin ?? false;
   const groupedByCustomer = useMemo(() => {
@@ -173,17 +246,112 @@ export default function DocumentsPage() {
             marginBottom: 0,
           }}
         >
-          {t(cursor ? "docs.countMore" : "docs.count", {
-            n: documents.length,
-          })}
+          {t("docs.count", { n: sortedDocuments.length })}
         </p>
+
+        <div
+          className="flex flex-wrap items-center justify-between gap-4"
+          style={{ marginTop: "32px" }}
+        >
+          <div
+            style={{
+              flex: "1 1 280px",
+              maxWidth: "400px",
+              position: "relative",
+            }}
+          >
+            <Search
+              size={18}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--tellian-stone)",
+              }}
+            />
+            <input
+              type="text"
+              placeholder={t("docs.search.placeholder")}
+              value={searchTerm}
+              onChange={(e) => updateSearch(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 28px 12px 32px",
+                backgroundColor: "transparent",
+                border: "none",
+                borderBottom: "1px solid var(--tellian-line)",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "14px",
+                color: "var(--tellian-dark)",
+                outline: "none",
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => updateSearch("")}
+                aria-label="Clear search"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--tellian-stone)",
+                  padding: "4px",
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--tellian-stone)",
+            }}
+          >
+            {t("docs.sort.label")}
+            <select
+              value={sortKey}
+              onChange={(e) => updateSort(e.target.value as SortKey)}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--tellian-line)",
+                padding: "8px 12px",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "13px",
+                color: "var(--tellian-dark)",
+                cursor: "pointer",
+                letterSpacing: "normal",
+                textTransform: "none",
+              }}
+            >
+              <option value="newest">{t("docs.sort.newest")}</option>
+              <option value="oldest">{t("docs.sort.oldest")}</option>
+              <option value="titleAsc">{t("docs.sort.titleAsc")}</option>
+              <option value="titleDesc">{t("docs.sort.titleDesc")}</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {initialLoading ? (
         <div style={{ padding: "96px 0" }} className="flex justify-center">
           <Loader2 className="animate-spin" />
         </div>
-      ) : documents.length > 0 ? (
+      ) : sortedDocuments.length > 0 ? (
         <>
           <div
             style={{
@@ -202,7 +370,7 @@ export default function DocumentsPage() {
                     onToggle={() => toggleExpanded(customerId)}
                   />
                 ))
-              : documents.map((doc) => (
+              : paginatedDocuments.map((doc) => (
                   <DocumentRow
                     key={doc.id}
                     doc={doc}
@@ -225,37 +393,67 @@ export default function DocumentsPage() {
             </p>
           )}
 
-          {cursor && (
+          {!isAdmin && totalPages > 1 && (
             <div
-              className="flex justify-center"
-              style={{ padding: "32px 0 16px" }}
+              className="flex items-center justify-between"
+              style={{
+                marginTop: "32px",
+                marginBottom: "48px",
+                paddingTop: "24px",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              }}
             >
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--tellian-line)",
-                  padding: "12px 28px",
-                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                  fontSize: "11px",
-                  fontWeight: 500,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
-                  color: "var(--tellian-dark)",
-                  cursor: loadingMore ? "not-allowed" : "pointer",
-                  opacity: loadingMore ? 0.6 : 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  transition: "opacity 200ms ease-out",
-                }}
-              >
-                {t("docs.loadMore")}
-                {loadingMore && (
-                  <Loader2 size={14} className="animate-spin" />
-                )}
-              </button>
+              <div style={{ fontSize: "13px", color: "var(--tellian-stone)" }}>
+                {t("docs.pagination.info", {
+                  current: safePage,
+                  total: totalPages,
+                })}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                  disabled={safePage === 1}
+                  aria-label="Previous page"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "40px",
+                    height: "40px",
+                    border: "1px solid var(--tellian-line)",
+                    background: "transparent",
+                    color: "var(--tellian-dark)",
+                    cursor: safePage === 1 ? "not-allowed" : "pointer",
+                    opacity: safePage === 1 ? 0.3 : 1,
+                  }}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages, safePage + 1))
+                  }
+                  disabled={safePage === totalPages}
+                  aria-label="Next page"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "40px",
+                    height: "40px",
+                    border: "1px solid var(--tellian-line)",
+                    background: "transparent",
+                    color: "var(--tellian-dark)",
+                    cursor:
+                      safePage === totalPages ? "not-allowed" : "pointer",
+                    opacity: safePage === totalPages ? 0.3 : 1,
+                  }}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -270,6 +468,8 @@ export default function DocumentsPage() {
         >
           {error}
         </p>
+      ) : searchTerm ? (
+        <EmptySearchState t={t} />
       ) : (
         <EmptyState t={t} />
       )}
@@ -431,6 +631,50 @@ function CustomerGroup({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function EmptySearchState({
+  t,
+}: {
+  t: (key: "docs.empty.search.headline" | "docs.empty.search.subtitle") => string;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center text-center"
+      style={{ padding: "96px 24px" }}
+    >
+      <Search
+        size={48}
+        style={{ color: "var(--tellian-muted)", opacity: 0.5 }}
+      />
+      <h2
+        style={{
+          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+          fontSize: "28px",
+          fontWeight: 400,
+          color: "var(--tellian-dark)",
+          margin: 0,
+          marginTop: "24px",
+        }}
+      >
+        {t("docs.empty.search.headline")}
+      </h2>
+      <p
+        style={{
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: "15px",
+          fontWeight: 400,
+          color: "var(--tellian-stone)",
+          lineHeight: 1.6,
+          marginTop: "12px",
+          marginBottom: 0,
+          maxWidth: "400px",
+        }}
+      >
+        {t("docs.empty.search.subtitle")}
+      </p>
     </div>
   );
 }

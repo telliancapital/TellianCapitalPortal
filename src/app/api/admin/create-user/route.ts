@@ -15,7 +15,6 @@ import { requireApiGroup } from "@/lib/dal";
 
 interface CreateUserBody {
   customerId?: string;
-  userId?: string;
   email?: string;
   role?: string;
   temporaryPassword?: string;
@@ -23,6 +22,24 @@ interface CreateUserBody {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[A-Za-z0-9_-]+$/;
+
+const ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const ID_LENGTH = 10;
+
+const STAFF_ID_PREFIX: Record<string, string> = {
+  [COGNITO_GROUPS.ADMIN]: "ADM-",
+  [COGNITO_GROUPS.INTERNAL]: "EMP-",
+};
+
+function generateStaffUsername(role: string): string {
+  const prefix = STAFF_ID_PREFIX[role] ?? "USR-";
+  const bytes = randomBytes(ID_LENGTH);
+  const suffix = Array.from(
+    bytes,
+    (b) => ID_ALPHABET[b % ID_ALPHABET.length],
+  ).join("");
+  return prefix + suffix;
+}
 
 function generateTempPassword(): string {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -67,46 +84,36 @@ export async function POST(request: Request) {
   const userAttributes: { Name: string; Value: string }[] = [];
 
   if (isStaffRole(role)) {
-    const userId = body.userId?.trim();
     const email = body.email?.trim().toLowerCase();
-    if (!userId) {
-      return NextResponse.json(
-        { error: "userId is required for staff accounts" },
-        { status: 400 },
-      );
-    }
-    if (!ID_RE.test(userId)) {
-      return NextResponse.json(
-        { error: "Invalid user ID" },
-        { status: 400 },
-      );
-    }
     if (!email) {
       return NextResponse.json(
-        { error: "email is required for staff accounts" },
+        { error: "Email is required for staff accounts." },
         { status: 400 },
       );
     }
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json(
-        { error: "Invalid email format" },
+        { error: "The email address is not in a valid format." },
         { status: 400 },
       );
     }
-    username = userId;
+    username = generateStaffUsername(role);
     userAttributes.push({ Name: "email", Value: email });
     userAttributes.push({ Name: "email_verified", Value: "true" });
   } else {
     const customerId = body.customerId?.trim();
     if (!customerId) {
       return NextResponse.json(
-        { error: "customerId is required" },
+        { error: "Customer ID is required." },
         { status: 400 },
       );
     }
     if (!ID_RE.test(customerId)) {
       return NextResponse.json(
-        { error: "Invalid customer ID" },
+        {
+          error:
+            "Customer ID can only contain letters, numbers, hyphens, and underscores.",
+        },
         { status: 400 },
       );
     }
@@ -144,16 +151,92 @@ export async function POST(request: Request) {
       temporaryPassword,
     });
   } catch (err) {
-    if (err instanceof UsernameExistsException) {
-      return NextResponse.json(
-        { error: "User already exists" },
-        { status: 409 },
-      );
-    }
     console.error("Create user error", err);
+    return mapCognitoError(err, username);
+  }
+}
+
+function mapCognitoError(err: unknown, username: string): NextResponse {
+  if (err instanceof UsernameExistsException) {
     return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 },
+      { error: `A user with the username "${username}" already exists.` },
+      { status: 409 },
     );
+  }
+
+  const awsErr = err as { name?: string; message?: string } | null;
+  const name = awsErr?.name;
+  const detail = awsErr?.message?.trim();
+
+  switch (name) {
+    case "InvalidPasswordException":
+      return NextResponse.json(
+        {
+          error:
+            detail ||
+            "Temporary password does not meet the password policy (minimum length, uppercase, lowercase, number, and symbol).",
+        },
+        { status: 400 },
+      );
+    case "InvalidParameterException":
+      return NextResponse.json(
+        { error: detail || "One or more fields are invalid." },
+        { status: 400 },
+      );
+    case "LimitExceededException":
+    case "TooManyRequestsException":
+      return NextResponse.json(
+        {
+          error:
+            "Too many requests to the user directory. Please wait a moment and try again.",
+        },
+        { status: 429 },
+      );
+    case "NotAuthorizedException":
+      return NextResponse.json(
+        {
+          error:
+            "The directory rejected this request. Check admin permissions and credentials.",
+        },
+        { status: 403 },
+      );
+    case "ResourceNotFoundException":
+      return NextResponse.json(
+        {
+          error:
+            "User pool or role group not found. Check the server configuration.",
+        },
+        { status: 500 },
+      );
+    case "UserLambdaValidationException":
+      return NextResponse.json(
+        {
+          error:
+            detail ||
+            "A validation rule blocked this user from being created.",
+        },
+        { status: 400 },
+      );
+    case "CodeDeliveryFailureException":
+      return NextResponse.json(
+        {
+          error:
+            "User was rejected because the verification email could not be delivered. Check the email address.",
+        },
+        { status: 502 },
+      );
+    case "UnsupportedUserStateException":
+      return NextResponse.json(
+        { error: detail || "User is in an unsupported state." },
+        { status: 400 },
+      );
+    default:
+      return NextResponse.json(
+        {
+          error: detail || "An unexpected error occurred while creating the user.",
+          code: name,
+        },
+        { status: 500 },
+      );
   }
 }
