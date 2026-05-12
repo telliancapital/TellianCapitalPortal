@@ -6,6 +6,7 @@ import {
   InvalidPasswordException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getClientId } from "@/lib/cognito";
+import { assertRoleForMode, isLoginMode, type LoginMode } from "@/lib/loginRole";
 import { setSessionCookie } from "@/lib/session";
 
 type ChallengeName = "NEW_PASSWORD_REQUIRED" | "SOFTWARE_TOKEN_MFA";
@@ -16,6 +17,8 @@ interface ChallengeBody {
   session?: string;
   newPassword?: string;
   mfaCode?: string;
+  mode?: LoginMode;
+  email?: string;
 }
 
 export async function POST(request: Request) {
@@ -27,6 +30,7 @@ export async function POST(request: Request) {
   }
 
   const { challengeName, customerId, session } = body;
+  const mode: LoginMode = isLoginMode(body.mode) ? body.mode : "customer";
 
   if (!challengeName || !customerId || !session) {
     return NextResponse.json(
@@ -47,7 +51,6 @@ export async function POST(request: Request) {
     challengeResponses = {
       USERNAME: customerId,
       NEW_PASSWORD: body.newPassword,
-      "userAttributes.email": `${customerId}@tellian.local`,
     };
   } else if (challengeName === "SOFTWARE_TOKEN_MFA") {
     if (!body.mfaCode) {
@@ -75,7 +78,30 @@ export async function POST(request: Request) {
       ChallengeResponses: challengeResponses,
     });
 
-    const response = await cognito.send(command);
+    let response;
+    try {
+      response = await cognito.send(command);
+    } catch (err: any) {
+      // If Cognito says email is missing, and we are in customer mode,
+      // try injecting the placeholder email.
+      if (
+        err?.message?.includes("email is missing") &&
+        mode === "customer" &&
+        challengeName === "NEW_PASSWORD_REQUIRED" &&
+        !challengeResponses["userAttributes.email"]
+      ) {
+        challengeResponses["userAttributes.email"] = `${customerId}@tellian.local`;
+        const retryCommand = new RespondToAuthChallengeCommand({
+          ClientId: getClientId(),
+          ChallengeName: challengeName,
+          Session: session,
+          ChallengeResponses: challengeResponses,
+        });
+        response = await cognito.send(retryCommand);
+      } else {
+        throw err;
+      }
+    }
 
     if (response.ChallengeName) {
       return NextResponse.json({
@@ -94,14 +120,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (challengeName === "NEW_PASSWORD_REQUIRED") {
-      return NextResponse.json({ status: "PASSWORD_CHANGED" });
+    const role = assertRoleForMode(auth.IdToken, mode);
+    if (!role.ok) {
+      return NextResponse.json({ error: role.error }, { status: 403 });
     }
 
     await setSessionCookie({
       idToken: auth.IdToken,
       accessToken: auth.AccessToken,
-      refreshToken: auth.RefreshToken,
       expiresAt: Date.now() + (auth.ExpiresIn ?? 3600) * 1000,
     });
 
@@ -116,15 +142,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    console.error("Challenge error:", err);
     if (err instanceof NotAuthorizedException) {
       return NextResponse.json(
-        { error: "Session expired or invalid" },
+        { error: err.message ?? "Session expired or invalid" },
         { status: 401 },
       );
     }
-    console.error("Challenge error", err);
+    const e = err as { message?: string };
     return NextResponse.json(
-      { error: "Challenge response failed" },
+      { error: e.message ?? "Challenge response failed" },
       { status: 500 },
     );
   }

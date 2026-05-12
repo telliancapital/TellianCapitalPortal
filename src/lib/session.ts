@@ -6,12 +6,17 @@ import jwksClient from "jwks-rsa";
 import { getClientId, getRegion, getUserPoolId } from "./cognito";
 
 const SESSION_COOKIE = "tellian_session";
+const IMPERSONATION_COOKIE = "tellian_impersonate";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
+
+export interface ImpersonationData {
+  targetUsername: string;
+  targetGroups: string[];
+}
 
 export interface SessionData {
   idToken: string;
   accessToken: string;
-  refreshToken?: string;
   expiresAt: number;
 }
 
@@ -108,3 +113,38 @@ export async function clearSessionCookie() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
 }
+
+export async function setImpersonationCookie(data: ImpersonationData) {
+  const cookieStore = await cookies();
+  cookieStore.set(IMPERSONATION_COOKIE, JSON.stringify(data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  });
+}
+
+export async function getImpersonationCookie(): Promise<ImpersonationData | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(IMPERSONATION_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ImpersonationData;
+    if (
+      typeof parsed.targetUsername !== "string" ||
+      !Array.isArray(parsed.targetGroups)
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearImpersonationCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(IMPERSONATION_COOKIE);
+}
+

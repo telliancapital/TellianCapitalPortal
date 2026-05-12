@@ -14,6 +14,7 @@ export interface AuthUser {
   sub: string;
   groups: string[];
   isAdmin: boolean;
+  impersonatedBy: string | null;
 }
 
 interface AuthContextValue {
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sub: data.sub,
           groups: data.groups,
           isAdmin: data.isAdmin,
+          impersonatedBy: data.impersonatedBy ?? null,
         });
       } else {
         setUser(null);

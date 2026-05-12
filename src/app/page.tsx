@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine,
   ChevronDown,
@@ -45,11 +46,21 @@ function formatDate(iso: string | null, locale: string): string {
 export default function DocumentsPage() {
   const { t, locale } = useI18n();
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasUserMgmtAccess =
+    user?.isAdmin || user?.groups.includes("InternalEmployee");
+
+  useEffect(() => {
+    if (!authLoading && hasUserMgmtAccess) {
+      router.replace("/admin");
+    }
+  }, [authLoading, hasUserMgmtAccess, router]);
 
   const fetchPage = useCallback(
     async (cursorArg: string | null, append: boolean) => {
@@ -72,6 +83,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     if (authLoading || !user) return;
+    if (hasUserMgmtAccess) return;
     let cancelled = false;
     (async () => {
       setInitialLoading(true);
@@ -91,7 +103,7 @@ export default function DocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, fetchPage]);
+  }, [authLoading, user, hasUserMgmtAccess, fetchPage]);
 
   async function loadMore() {
     if (!cursor || loadingMore) return;

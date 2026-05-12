@@ -5,6 +5,7 @@ import {
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getClientId } from "@/lib/cognito";
+import { assertRoleForMode } from "@/lib/loginRole";
 import { setSessionCookie } from "@/lib/session";
 
 interface LoginBody {
@@ -58,10 +59,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const role = assertRoleForMode(auth.IdToken, "customer");
+    if (!role.ok) {
+      return NextResponse.json({ error: role.error }, { status: 403 });
+    }
+
     await setSessionCookie({
       idToken: auth.IdToken,
       accessToken: auth.AccessToken,
-      refreshToken: auth.RefreshToken,
       expiresAt: Date.now() + (auth.ExpiresIn ?? 3600) * 1000,
     });
 
