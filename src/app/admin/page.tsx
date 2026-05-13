@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, KeyRound, Loader2, LogIn, Search, Shield, ShieldOff, UserPlus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, KeyRound, Loader2, LogIn, Search, Shield, ShieldOff, UserPlus, X } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
+import { ToastProvider, useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -173,6 +174,7 @@ export default function AdminPage() {
 
   return (
     <PortalLayout>
+      <ToastProvider>
       <div
         style={{
           paddingTop: "clamp(48px, 8vh, 96px)",
@@ -318,9 +320,9 @@ export default function AdminPage() {
           className="hidden md:grid md:items-center"
           style={{
             gridTemplateColumns: showActionsColumn
-              ? "2fr 1.5fr 1fr 1fr 2fr"
-              : "2fr 1.5fr 1fr 1fr",
-            gap: "16px",
+              ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
+              : "minmax(0, 2.2fr) 140px 110px 100px",
+            gap: "24px",
             padding: "16px 0",
             borderBottom: "1px solid var(--tellian-line)",
             fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -331,11 +333,13 @@ export default function AdminPage() {
             color: "var(--tellian-stone)",
           }}
         >
-          <span>{t("admin.col.username")}</span>
-          <span>{t("admin.col.role")}</span>
-          <span>{t("admin.col.status")}</span>
-          <span>{t("admin.col.mfa")}</span>
-          {showActionsColumn && <span>{t("admin.col.actions")}</span>}
+          <span style={headerCell}>{t("admin.col.username")}</span>
+          <span style={headerCell}>{t("admin.col.role")}</span>
+          <span style={headerCell}>{t("admin.col.status")}</span>
+          <span style={headerCell}>{t("admin.col.mfa")}</span>
+          {showActionsColumn && (
+            <span style={headerCell}>{t("admin.col.actions")}</span>
+          )}
         </div>
 
         {fetching ? (
@@ -424,14 +428,13 @@ export default function AdminPage() {
       {showCreate && (
         <CreateUserModal
           onClose={() => setShowCreate(false)}
-          onCreated={(message) => {
-            setCreatedNotice(message);
-            setShowCreate(false);
+          onCreated={() => {
             void loadUsers();
           }}
           t={t}
         />
       )}
+      </ToastProvider>
     </PortalLayout>
   );
 }
@@ -470,31 +473,45 @@ function UserRow({
       className="md:grid md:items-center"
       style={{
         gridTemplateColumns: showActions
-          ? "2fr 1.5fr 1fr 1fr 2fr"
-          : "2fr 1.5fr 1fr 1fr",
+          ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
+          : "minmax(0, 2.2fr) 140px 110px 100px",
         padding: "16px 0",
         minHeight: "64px",
         borderBottom: "1px solid var(--tellian-line)",
-        gap: "16px",
+        gap: "24px",
         fontFamily: "var(--font-inter), 'Inter', sans-serif",
       }}
     >
       <div
         style={{
+          ...rowCell,
           fontSize: "15px",
           fontWeight: 400,
           color: "var(--tellian-dark)",
-          minWidth: 0,
           overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
         }}
         title={user.username}
       >
-        {user.username}
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            display: "block",
+            width: "100%",
+          }}
+        >
+          {user.username}
+        </span>
       </div>
 
-      <div style={{ minWidth: 0, fontSize: "13px", color: "var(--tellian-dark)" }}>
+      <div
+        style={{
+          ...rowCell,
+          fontSize: "13px",
+          color: "var(--tellian-dark)",
+        }}
+      >
         {!canManage ? (
           <span>{currentRole}</span>
         ) : (
@@ -509,6 +526,7 @@ function UserRow({
               margin: 0,
               fontFamily: "inherit",
               fontSize: "13px",
+              lineHeight: 1.2,
               color: "var(--tellian-dark)",
               cursor: roleSelectDisabled ? "not-allowed" : "pointer",
               opacity: roleSelectDisabled ? 0.5 : 1,
@@ -525,6 +543,7 @@ function UserRow({
 
       <div
         style={{
+          ...rowCell,
           fontSize: "13px",
           color: user.enabled ? "var(--tellian-dark)" : "var(--tellian-stone)",
         }}
@@ -534,10 +553,9 @@ function UserRow({
 
       <div
         style={{
+          ...rowCell,
           fontSize: "13px",
           color: user.mfaEnabled ? "#059669" : "var(--tellian-stone)",
-          display: "flex",
-          alignItems: "center",
           gap: "6px",
         }}
       >
@@ -550,7 +568,7 @@ function UserRow({
       </div>
 
       {showActions && (
-        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap items-center">
+        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap items-center" style={{ minWidth: 0 }}>
           {canManage && (
             <button
               onClick={onToggle}
@@ -686,16 +704,21 @@ function CreateUserModal({
   t,
 }: {
   onClose: () => void;
-  onCreated: (message: string) => void;
+  onCreated: () => void;
   t: (key: any) => string;
 }) {
+  const toast = useToast();
   const [customerId, setCustomerId] = useState("");
-  const [userId, setUserId] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("User");
   const [tempPassword, setTempPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    username: string;
+    temporaryPassword: string;
+    role: Role;
+  } | null>(null);
 
   const isStaff = role === "Admin" || role === "InternalEmployee";
 
@@ -707,15 +730,13 @@ function CreateUserModal({
       const payload: {
         role: Role;
         temporaryPassword?: string;
-        customerId?: string;
-        userId?: string;
         email?: string;
+        customerId?: string;
       } = {
         role,
         temporaryPassword: tempPassword || undefined,
       };
       if (isStaff) {
-        payload.userId = userId.trim();
         payload.email = email.trim();
       } else {
         payload.customerId = customerId.trim();
@@ -726,21 +747,35 @@ function CreateUserModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await res.json()) as {
+      const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         username?: string;
         temporaryPassword?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? "Error");
+        const message =
+          data.error?.trim() || t("admin.toast.createFailed.fallback");
+        setError(message);
+        toast.error(message);
         setSubmitting(false);
         return;
       }
-      onCreated(
-        `${t("admin.created")} ${data.temporaryPassword} (${data.username})`,
-      );
-    } catch {
-      setError("Error");
+
+      toast.success(t("admin.toast.created.title"));
+      setResult({
+        username: data.username ?? "",
+        temporaryPassword: data.temporaryPassword ?? "",
+        role,
+      });
+      setSubmitting(false);
+      onCreated();
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : t("admin.toast.createFailed.fallback");
+      setError(message);
+      toast.error(message);
       setSubmitting(false);
     }
   }
@@ -780,7 +815,7 @@ function CreateUserModal({
               margin: 0,
             }}
           >
-            {t("admin.modal.title")}
+            {result ? t("admin.toast.created.title") : t("admin.modal.title")}
           </h2>
           <button
             onClick={onClose}
@@ -796,6 +831,9 @@ function CreateUserModal({
           </button>
         </div>
 
+        {result ? (
+          <CreatedCredentials result={result} onDone={onClose} t={t} />
+        ) : (
         <form onSubmit={handleSubmit}>
           <div>
             <label style={modalLabel}>{t("admin.modal.role")}</label>
@@ -812,27 +850,16 @@ function CreateUserModal({
             </select>
           </div>
           {isStaff ? (
-            <>
-              <div style={{ marginTop: "20px" }}>
-                <label style={modalLabel}>{t("admin.modal.userId")}</label>
-                <input
-                  required
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  style={modalInput}
-                />
-              </div>
-              <div style={{ marginTop: "20px" }}>
-                <label style={modalLabel}>{t("admin.modal.email")}</label>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={modalInput}
-                />
-              </div>
-            </>
+            <div style={{ marginTop: "20px" }}>
+              <label style={modalLabel}>{t("admin.modal.email")}</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={modalInput}
+              />
+            </div>
           ) : (
             <div style={{ marginTop: "20px" }}>
               <label style={modalLabel}>{t("admin.modal.customerId")}</label>
@@ -914,10 +941,137 @@ function CreateUserModal({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
 }
+
+function CreatedCredentials({
+  result,
+  onDone,
+  t,
+}: {
+  result: { username: string; temporaryPassword: string; role: Role };
+  onDone: () => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div>
+      <div>
+        <label style={modalLabel}>{t("admin.modal.role")}</label>
+        <div style={{ ...modalInput, borderColor: "var(--tellian-line)" }}>
+          {result.role}
+        </div>
+      </div>
+      <div style={{ marginTop: "20px" }}>
+        <label style={modalLabel}>{t("admin.toast.usernameLabel")}</label>
+        <CredentialField value={result.username} />
+      </div>
+      <div style={{ marginTop: "20px" }}>
+        <label style={modalLabel}>{t("admin.modal.tempPassword")}</label>
+        <CredentialField value={result.temporaryPassword} />
+      </div>
+
+      <div className="flex" style={{ marginTop: "32px" }}>
+        <button
+          type="button"
+          onClick={onDone}
+          style={{
+            flex: 1,
+            height: "48px",
+            backgroundColor: "var(--tellian-dark)",
+            color: "#FFFFFF",
+            border: "none",
+            fontFamily: "inherit",
+            fontSize: "11px",
+            fontWeight: 500,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          {t("admin.modal.done")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CredentialField({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard blocked — value remains visible.
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+      <code
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: "12px",
+          border: "1px solid var(--tellian-line)",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: "14px",
+          color: "var(--tellian-dark)",
+          backgroundColor: "var(--tellian-bg)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+        }}
+        title={value}
+      >
+        {value}
+      </code>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          background: "transparent",
+          border: "1px solid var(--tellian-line)",
+          padding: "0 14px",
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: "11px",
+          fontWeight: 500,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--tellian-dark)",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <Copy size={12} />
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
+const headerCell: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  minWidth: 0,
+};
+
+const rowCell: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  minWidth: 0,
+};
 
 const modalLabel: React.CSSProperties = {
   display: "block",
