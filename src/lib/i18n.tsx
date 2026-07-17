@@ -9,8 +9,7 @@ const translations = {
   // Login page
   "login.eyebrow": { de: "Mandanten-Portal", en: "Client Portal" },
   "login.staff.eyebrow": { de: "Mitarbeiter-Portal", en: "Staff Portal" },
-  "login.headline1": { de: "Willkommen", en: "Welcome" },
-  "login.headline2": { de: "zurück.", en: "back." },
+  "login.headline": { de: "Willkommen zurück.", en: "Welcome back." },
   "login.subtext": {
     de: "Melden Sie sich an, um auf Ihre Performance-Reports und Quartalsberichte zuzugreifen.",
     en: "Sign in to access your performance reports and quarterly statements.",
@@ -43,21 +42,62 @@ const translations = {
   },
   // Challenges
   "challenge.newPassword.headline": {
-    de: "Neues Passwort festlegen",
-    en: "Set a new password",
+    de: "Passwort festlegen.",
+    en: "Set your password.",
   },
   "challenge.newPassword.subtext": {
-    de: "Aus Sicherheitsgründen müssen Sie ein neues Passwort wählen.",
-    en: "For security reasons, please choose a new password.",
+    de: "Legen Sie ein persönliches Passwort für Ihr Konto fest. Das temporäre Passwort verliert danach seine Gültigkeit.",
+    en: "Set a personal password for your account. The temporary password will expire afterwards.",
   },
   "challenge.newPassword.label": { de: "Neues Passwort", en: "New password" },
   "challenge.confirmPassword.label": {
-    de: "Passwort bestätigen",
+    de: "Passwort wiederholen",
     en: "Confirm password",
+  },
+  "challenge.newPassword.submit": {
+    de: "Passwort speichern",
+    en: "Save password",
+  },
+  "challenge.newPassword.loading": {
+    de: "Wird gespeichert…",
+    en: "Saving…",
+  },
+  "challenge.newPassword.successHeadline": {
+    de: "Passwort gespeichert.",
+    en: "Password saved.",
   },
   "challenge.newPassword.success": {
     de: "Passwort aktualisiert. Bitte melden Sie sich mit Ihrem neuen Passwort an.",
     en: "Password updated. Please sign in with your new password.",
+  },
+  "challenge.newPassword.saved": { de: "Gespeichert", en: "Saved" },
+  "challenge.newPassword.requirements": {
+    de: "Anforderungen",
+    en: "Requirements",
+  },
+  "challenge.newPassword.rule.length": {
+    de: "Mindestens 8 Zeichen",
+    en: "At least 8 characters",
+  },
+  "challenge.newPassword.rule.uppercase": {
+    de: "Mindestens ein Grossbuchstabe",
+    en: "At least one uppercase letter",
+  },
+  "challenge.newPassword.rule.lowercase": {
+    de: "Mindestens ein Kleinbuchstabe",
+    en: "At least one lowercase letter",
+  },
+  "challenge.newPassword.rule.digit": {
+    de: "Mindestens eine Zahl",
+    en: "At least one number",
+  },
+  "challenge.newPassword.rule.special": {
+    de: "Mindestens ein Sonderzeichen",
+    en: "At least one special character",
+  },
+  "challenge.newPassword.progress": {
+    de: "{passed} von {total} erfüllt",
+    en: "{passed} of {total} met",
   },
   "challenge.mfa.headline": {
     de: "Bestätigungscode eingeben",
@@ -117,12 +157,17 @@ const translations = {
   // Portal layout
   "portal.logout": { de: "Abmelden", en: "Sign out" },
   "portal.admin": { de: "Benutzer Management", en: "User Management" },
+  "portal.nav.reports": { de: "Ihre Berichte", en: "Your Reports" },
+  "portal.nav.userManagement": {
+    de: "Benutzerverwaltung",
+    en: "User Management",
+  },
 
   // Admin page
-  "admin.headline": { de: "Benutzerverwaltung", en: "User management" },
+  "admin.headline": { de: "Benutzerverwaltung", en: "User Management." },
   "admin.subtext": {
-    de: "Mandanten erstellen, Rollen ändern und Konten deaktivieren.",
-    en: "Create clients, change roles and disable accounts.",
+    de: "Verwalten Sie Kunden, Mitarbeiter und Administratoren.",
+    en: "Manage clients, employees and administrators.",
   },
   "admin.create": { de: "Benutzer erstellen", en: "Create user" },
   "admin.col.username": { de: "Kunden-ID", en: "Customer ID" },
@@ -205,7 +250,17 @@ const translations = {
   },
 
   // Documents page
-  "docs.headline": { de: "Ihre Berichte", en: "Your reports" },
+  "docs.greeting": { de: "Willkommen, {name}.", en: "Welcome, {name}." },
+  "docs.rm.headline": {
+    de: "Ihr Relationship Manager",
+    en: "Your Relationship Manager",
+  },
+  "docs.rm.noRm": {
+    de: "Noch kein RM zugeordnet.",
+    en: "No RM assigned yet.",
+  },
+  "docs.profile.address": { de: "Adresse", en: "Address" },
+  "docs.headline": { de: "Ihre Berichte.", en: "Your Reports." },
   "docs.count": {
     de: "{n} Dokumente verfügbar",
     en: "{n} documents available",
@@ -220,6 +275,9 @@ const translations = {
     de: "Berichte suchen...",
     en: "Search reports...",
   },
+  "docs.col.title": { de: "Titel", en: "Title" },
+  "docs.col.date": { de: "Datum", en: "Date" },
+  "docs.col.format": { de: "Format", en: "Format" },
   "docs.sort.label": { de: "Sortieren nach", en: "Sort by" },
   "docs.sort.newest": { de: "Neueste zuerst", en: "Newest first" },
   "docs.sort.oldest": { de: "Älteste zuerst", en: "Oldest first" },
