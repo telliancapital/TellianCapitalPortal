@@ -6,8 +6,15 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { TellianLogo } from "@/components/TellianLogo";
 
-export function PortalLayout({ children }: { children: React.ReactNode }) {
+export function PortalLayout({
+  children,
+  sectionLabel,
+}: {
+  children: React.ReactNode;
+  sectionLabel?: string;
+}) {
   const { user, loading, logout, refresh } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
@@ -61,8 +68,8 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         <div
           className="flex items-center justify-between flex-wrap gap-3 shrink-0"
           style={{
-            paddingLeft: "clamp(24px, 4vw, 48px)",
-            paddingRight: "clamp(24px, 4vw, 48px)",
+            paddingLeft: "clamp(32px, 4vw, 64px)",
+            paddingRight: "clamp(32px, 4vw, 64px)",
             paddingTop: "12px",
             paddingBottom: "12px",
             backgroundColor: "var(--tellian-dark)",
@@ -107,37 +114,47 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       <header
         className="flex items-center justify-between shrink-0"
         style={{
-          height: "68px",
-          paddingLeft: "clamp(24px, 4vw, 48px)",
-          paddingRight: "clamp(24px, 4vw, 48px)",
+          padding: "16px clamp(32px, 4vw, 64px)",
           borderBottom: "1px solid var(--tellian-line)",
+          backgroundColor: "var(--tellian-bg)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
         }}
       >
-        <a
-          href={homeHref}
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "14px",
-            fontWeight: 500,
-            letterSpacing: "0.3em",
-            textTransform: "uppercase",
-            color: "var(--tellian-dark)",
-            userSelect: "none",
-            textDecoration: "none",
-          }}
-        >
-          Tellian Capital
-        </a>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center" style={{ gap: "clamp(16px, 2vw, 24px)" }}>
+          <a href={homeHref} style={{ display: "inline-flex" }}>
+            <TellianLogo style={{ height: "clamp(32px, 4vw, 40px)", width: "auto" }} />
+          </a>
+          {sectionLabel && (
+            <span
+              className="hidden sm:inline"
+              style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "10px",
+                fontWeight: 500,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "var(--tellian-stone)",
+              }}
+            >
+              {sectionLabel}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center" style={{ gap: "clamp(12px, 2vw, 20px)" }}>
           {hasUserMgmtAccess && (
             <a
               href="/admin"
+              className="hidden sm:inline"
               style={{
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "13px",
-                fontWeight: 400,
+                fontSize: "11px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
                 color: "var(--tellian-stone)",
                 textDecoration: "none",
+                padding: "8px 0",
               }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.color = "var(--tellian-dark)")
@@ -150,10 +167,11 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             </a>
           )}
           <span
+            className="hidden sm:inline"
             style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
-              color: "var(--tellian-muted)",
+              fontSize: "12px",
+              color: "var(--tellian-stone)",
             }}
           >
             {user.username}
@@ -165,13 +183,14 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             }}
             style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
-              fontWeight: 400,
+              fontSize: "11px",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
               color: "var(--tellian-stone)",
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              padding: 0,
+              padding: "8px 0",
               transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
             }}
             onMouseEnter={(e) =>
@@ -183,6 +202,15 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           >
             {t("portal.logout")}
           </button>
+          <span
+            aria-hidden
+            style={{
+              width: "1px",
+              height: "16px",
+              backgroundColor: "var(--tellian-line)",
+              flexShrink: 0,
+            }}
+          />
           <LanguageToggle />
         </div>
       </header>
@@ -190,11 +218,8 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1"
         style={{
-          maxWidth: "1024px",
-          width: "100%",
-          margin: "0 auto",
-          paddingLeft: "clamp(24px, 4vw, 48px)",
-          paddingRight: "clamp(24px, 4vw, 48px)",
+          paddingLeft: "clamp(32px, 4vw, 64px)",
+          paddingRight: "clamp(32px, 4vw, 64px)",
         }}
       >
         {children}

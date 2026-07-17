@@ -2,16 +2,19 @@
 
 :root {
   /* ── Tellian Capital — brand palette (synced from main site theme.css) ── */
-  --tellian-bg: #F9F9F7;
-  --tellian-bg-secondary: #F2F1EC;
-  --tellian-dark: #1A1916;
-  --tellian-charcoal: #3A3835;
+  --tellian-bg: #F4F4F0;
+  --tellian-bg-secondary: #ECEAE5;
+  --tellian-dark: #191718;
+  --tellian-charcoal: #191718;
   --tellian-stone: #8A857C;
-  --tellian-muted: #B0ACA5;
+  --tellian-muted: #B8AEA3;
   --tellian-line: #D8D5CF;
   --tellian-warm: #989071;
   --tellian-subtle: #E8E6E1;
   --tellian-accent: #6B665E;
+  --tellian-purple: #281F33;
+  --tellian-button: #B8AEA3;
+  --tellian-button-hover: #A69D93;
 
   /* ── Form states ── */
   --tellian-error: #B5453A;
@@ -26,8 +29,7 @@
   --tellian-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --tellian-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
 
-  /* REBRAND: pending */
-  --tellian-font-serif: 'Cormorant Garamond', serif;
+  --tellian-font-serif: 'Lustria', serif;
   --tellian-font-sans: 'Inter', sans-serif;
 }
 
@@ -42,6 +44,9 @@
   --color-tellian-warm: var(--tellian-warm);
   --color-tellian-subtle: var(--tellian-subtle);
   --color-tellian-accent: var(--tellian-accent);
+  --color-tellian-purple: var(--tellian-purple);
+  --color-tellian-button: var(--tellian-button);
+  --color-tellian-button-hover: var(--tellian-button-hover);
   --color-tellian-error: var(--tellian-error);
   --color-tellian-error-bg: var(--tellian-error-bg);
   --color-tellian-success: var(--tellian-success);
@@ -53,7 +58,28 @@
   --shadow-tellian-lg: var(--tellian-shadow-lg);
 }
 
+/* ── Global resets (matches design portal) ── */
+*::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(26, 25, 22, 0.08);
+  color: var(--tellian-dark);
+}
+
 body {
+  margin: 0;
   background: var(--tellian-bg);
   color: var(--tellian-dark);
 }

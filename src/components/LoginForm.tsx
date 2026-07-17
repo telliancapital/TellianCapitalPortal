@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { TellianLogo } from "@/components/TellianLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { FloatingField } from "@/components/FloatingField";
+import { PasswordField } from "@/components/PasswordField";
 import { useI18n } from "@/lib/i18n";
+import { EASE, DURATION } from "@/lib/motion";
 
 export type LoginMode = "customer" | "staff";
 
@@ -81,6 +84,29 @@ function validateNewPassword(v: string): ValidationKey | null {
 function validateMfaCode(v: string): ValidationKey | null {
   return /^\d{6}$/.test(v) ? null : "validation.mfaCode";
 }
+
+/* Mirrors the checks inside validateNewPassword — for the live checklist
+   display only. validateNewPassword remains the sole gate on submission. */
+const NEW_PASSWORD_RULES: {
+  id: string;
+  labelKey:
+    | "challenge.newPassword.rule.length"
+    | "challenge.newPassword.rule.uppercase"
+    | "challenge.newPassword.rule.lowercase"
+    | "challenge.newPassword.rule.digit"
+    | "challenge.newPassword.rule.special";
+  test: (v: string) => boolean;
+}[] = [
+  { id: "length", labelKey: "challenge.newPassword.rule.length", test: (v) => v.length >= 8 },
+  { id: "uppercase", labelKey: "challenge.newPassword.rule.uppercase", test: (v) => /[A-Z]/.test(v) },
+  { id: "lowercase", labelKey: "challenge.newPassword.rule.lowercase", test: (v) => /[a-z]/.test(v) },
+  { id: "digit", labelKey: "challenge.newPassword.rule.digit", test: (v) => /[0-9]/.test(v) },
+  {
+    id: "special",
+    labelKey: "challenge.newPassword.rule.special",
+    test: (v) => /[!@#$%^&*(),.?":{}|<>_\-=+[\]\\/;'`~]/.test(v),
+  },
+];
 
 interface MfaSetupInitResponse {
   status?: "OK";
@@ -158,6 +184,22 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     null,
   );
   const { t } = useI18n();
+
+  const passwordRuleResults = NEW_PASSWORD_RULES.map((r) => ({
+    ...r,
+    passed: r.test(newPassword),
+  }));
+  const passedRuleCount = passwordRuleResults.filter((r) => r.passed).length;
+  const passwordProgressFraction =
+    passwordRuleResults.length > 0
+      ? passedRuleCount / passwordRuleResults.length
+      : 0;
+  const passwordProgressColor =
+    passwordProgressFraction < 0.4
+      ? "var(--tellian-error)"
+      : passwordProgressFraction < 0.8
+        ? "var(--tellian-warning)"
+        : "var(--tellian-success)";
 
   async function startMfaSetup(session: string, customerIdArg: string) {
     try {
@@ -535,8 +577,11 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     }
   }
 
+  const justSavedPassword =
+    stage.kind === "credentials" && info === t("challenge.newPassword.success");
+
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-screen">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden">
       <div
         className="block md:hidden w-full overflow-hidden"
         style={{ height: "200px" }}
@@ -545,6 +590,10 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
           src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
+          style={{
+            objectPosition: "center 40%",
+            filter: "saturate(0.7) contrast(1.02)",
+          }}
         />
       </div>
 
@@ -556,22 +605,33 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
           src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
+          style={{
+            objectPosition: "center 40%",
+            filter: "saturate(0.7) contrast(1.02)",
+          }}
         />
       </div>
 
-      <div className="hidden lg:block lg:w-1/2 lg:min-h-screen overflow-hidden">
+      <div className="hidden lg:block lg:w-1/2 lg:h-screen overflow-hidden">
         <img
           src="/login-hero.jpeg"
           alt=""
           className="w-full h-full object-cover"
+          style={{
+            objectPosition: "center 40%",
+            filter: "saturate(0.7) contrast(1.02)",
+          }}
         />
       </div>
 
       <div
-        className="w-full lg:w-1/2 flex-1 flex flex-col relative px-6 py-12 md:px-12 lg:px-20"
+        className="w-full lg:w-1/2 flex-1 flex flex-col relative px-6 md:px-[clamp(40px,8vw,80px)] lg:px-[clamp(48px,5vw,96px)] lg:overflow-y-auto lg:h-screen"
         style={{ backgroundColor: "var(--tellian-bg)" }}
       >
-        <div className="flex items-center justify-between">
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: "clamp(20px, 3vw, 28px) 0" }}
+        >
           <a
             href="https://telliancapital.vercel.app/de"
             aria-label={t("login.back")}
@@ -583,73 +643,124 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
               (e.currentTarget.style.color = "var(--tellian-stone)")
             }
           >
-            <ArrowLeft size={16} />
-            {t("login.back")}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              style={{ flexShrink: 0 }}
+            >
+              <path
+                d="M19 12H5M12 19l-7-7 7-7"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>{t("login.back")}</span>
           </a>
           <LanguageToggle />
         </div>
 
         <div
-          className="flex-1 flex flex-col justify-center"
-          style={{ maxWidth: "400px" }}
+          className="flex-1 flex flex-col justify-start"
+          style={{ paddingTop: "clamp(8px, 1.5vw, 12px)", maxWidth: "420px" }}
         >
-          <div>
-            <TellianLogo width={120} style={{ color: "var(--tellian-dark)" }} />
-            <div
-              style={{
-                width: "24px",
-                height: "1px",
-                backgroundColor: "var(--tellian-dark)",
-                marginTop: "16px",
-              }}
-            />
-          </div>
+          <TellianLogo
+            style={{
+              width: "clamp(80px, 20vw, 120px)",
+              height: "auto",
+              marginBottom: "clamp(28px, 5vw, 40px)",
+            }}
+          />
 
-          <span style={eyebrowStyle}>
-            {stage.kind === "credentials"
-              ? t(config.eyebrowKey)
-              : stage.kind === "newPassword"
-                ? t("challenge.newPassword.headline")
-                : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
-                  ? t("challenge.mfaSetup.headline")
-                  : t("challenge.mfa.headline")}
-          </span>
+          <span style={eyebrowStyle}>{t(config.eyebrowKey)}</span>
 
-          {stage.kind === "credentials" ? (
-            <h1 style={headlineStyle}>
-              {t("login.headline1")}
-              <br />
-              <em style={{ fontStyle: "italic", fontWeight: 300 }}>
-                {t("login.headline2")}
-              </em>
-            </h1>
-          ) : (
-            <h1 style={headlineStyle}>
-              {stage.kind === "newPassword"
-                ? t("challenge.newPassword.headline")
-                : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
-                  ? t("challenge.mfaSetup.headline")
-                  : t("challenge.mfa.headline")}
-            </h1>
-          )}
+          <div
+            style={{
+              width: "28px",
+              height: "1.5px",
+              backgroundColor: "var(--tellian-dark)",
+              marginTop: "16px",
+            }}
+          />
+
+          <h1 style={headlineStyle}>
+            <em style={{ fontStyle: "italic", fontWeight: 400 }}>
+              {justSavedPassword
+                ? t("challenge.newPassword.successHeadline")
+                : stage.kind === "credentials"
+                  ? t("login.headline")
+                  : stage.kind === "newPassword"
+                    ? t("challenge.newPassword.headline")
+                    : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
+                      ? t("challenge.mfaSetup.headline")
+                      : t("challenge.mfa.headline")}
+            </em>
+          </h1>
 
           <p style={subtextStyle}>
-            {stage.kind === "credentials"
-              ? t("login.subtext")
-              : stage.kind === "newPassword"
-                ? t("challenge.newPassword.subtext")
-                : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
-                  ? t("challenge.mfaSetup.subtext")
-                  : t("challenge.mfa.subtext")}
+            {justSavedPassword
+              ? t("challenge.newPassword.success")
+              : stage.kind === "credentials"
+                ? t("login.subtext")
+                : stage.kind === "newPassword"
+                  ? t("challenge.newPassword.subtext")
+                  : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
+                    ? t("challenge.mfaSetup.subtext")
+                    : t("challenge.mfa.subtext")}
           </p>
+
+          {justSavedPassword && (
+            <div
+              style={{
+                marginTop: "24px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--tellian-success-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Check size={16} color="var(--tellian-success)" />
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  letterSpacing: "0.05em",
+                  color: "var(--tellian-success)",
+                }}
+              >
+                {t("challenge.newPassword.saved")}
+              </span>
+            </div>
+          )}
 
           {stage.kind === "credentials" ? (
             <form
               onSubmit={handleCredentials}
               noValidate
-              style={{ marginTop: "64px" }}
+              style={{
+                marginTop: "28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
             >
-              <Field
+              <FloatingField
                 id="identifier"
                 label={t(config.identifierLabelKey)}
                 placeholder={
@@ -666,50 +777,45 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
                 autoComplete={config.identifierAutoComplete}
                 error={identifierError ? t(identifierError) : null}
               />
-              <div style={{ marginTop: "24px" }}>
-                <Field
-                  id="password"
-                  label={t("login.password.label")}
-                  type="password"
-                  value={password}
-                  onChange={(v) => {
-                    setPassword(v);
-                    if (passwordError) setPasswordError(null);
-                  }}
-                  autoComplete="current-password"
-                  error={passwordError ? t(passwordError) : null}
-                />
-              </div>
-              <InfoText message={info} />
+              <FloatingField
+                id="password"
+                label={t("login.password.label")}
+                type="password"
+                value={password}
+                onChange={(v) => {
+                  setPassword(v);
+                  if (passwordError) setPasswordError(null);
+                }}
+                autoComplete="current-password"
+                error={passwordError ? t(passwordError) : null}
+              />
               <ErrorText error={error} />
               <SubmitButton loading={loading} label={t("login.submit")} />
-              <div style={{ marginTop: "20px", textAlign: "center" }}>
-                <a href={config.altLink.href} style={mutedLinkStyle}>
-                  {t(config.altLink.labelKey)}
-                </a>
-              </div>
             </form>
           ) : stage.kind === "optionalMfaSetup" ? (
             <form
               onSubmit={handleOptionalMfaVerify}
               noValidate
-              style={{ marginTop: "48px" }}
+              style={{
+                marginTop: "28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
             >
               <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
-              <div style={{ marginTop: "32px" }}>
-                <Field
-                  id="setupCode"
-                  label={t("challenge.mfaSetup.label")}
-                  type="text"
-                  value={setupCode}
-                  onChange={(v) => {
-                    setSetupCode(v);
-                    if (setupCodeError) setSetupCodeError(null);
-                  }}
-                  autoComplete="one-time-code"
-                  error={setupCodeError ? t(setupCodeError) : null}
-                />
-              </div>
+              <FloatingField
+                id="setupCode"
+                label={t("challenge.mfaSetup.label")}
+                type="text"
+                value={setupCode}
+                onChange={(v) => {
+                  setSetupCode(v);
+                  if (setupCodeError) setSetupCodeError(null);
+                }}
+                autoComplete="one-time-code"
+                error={setupCodeError ? t(setupCodeError) : null}
+              />
               <ErrorText error={error} />
               <SubmitButton loading={loading} label={t("challenge.submit")} />
               <button
@@ -725,23 +831,26 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
             <form
               onSubmit={handleMfaSetupVerify}
               noValidate
-              style={{ marginTop: "48px" }}
+              style={{
+                marginTop: "28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
             >
               <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
-              <div style={{ marginTop: "32px" }}>
-                <Field
-                  id="setupCode"
-                  label={t("challenge.mfaSetup.label")}
-                  type="text"
-                  value={setupCode}
-                  onChange={(v) => {
-                    setSetupCode(v);
-                    if (setupCodeError) setSetupCodeError(null);
-                  }}
-                  autoComplete="one-time-code"
-                  error={setupCodeError ? t(setupCodeError) : null}
-                />
-              </div>
+              <FloatingField
+                id="setupCode"
+                label={t("challenge.mfaSetup.label")}
+                type="text"
+                value={setupCode}
+                onChange={(v) => {
+                  setSetupCode(v);
+                  if (setupCodeError) setSetupCodeError(null);
+                }}
+                autoComplete="one-time-code"
+                error={setupCodeError ? t(setupCodeError) : null}
+              />
               <ErrorText error={error} />
               <SubmitButton loading={loading} label={t("challenge.submit")} />
               <button
@@ -757,14 +866,18 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
             <form
               onSubmit={handleChallenge}
               noValidate
-              style={{ marginTop: "64px" }}
+              style={{
+                marginTop: "28px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "20px",
+              }}
             >
               {stage.kind === "newPassword" ? (
                 <>
-                  <Field
+                  <PasswordField
                     id="newPassword"
                     label={t("challenge.newPassword.label")}
-                    type="password"
                     value={newPassword}
                     onChange={(v) => {
                       setNewPassword(v);
@@ -773,25 +886,149 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
                     autoComplete="new-password"
                     error={newPasswordError ? t(newPasswordError) : null}
                   />
-                  <div style={{ marginTop: "24px" }}>
-                    <Field
-                      id="confirmPassword"
-                      label={t("challenge.confirmPassword.label")}
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(v) => {
-                        setConfirmPassword(v);
-                        if (confirmPasswordError) setConfirmPasswordError(null);
+                  <PasswordField
+                    id="confirmPassword"
+                    label={t("challenge.confirmPassword.label")}
+                    value={confirmPassword}
+                    onChange={(v) => {
+                      setConfirmPassword(v);
+                      if (confirmPasswordError) setConfirmPasswordError(null);
+                    }}
+                    autoComplete="new-password"
+                    error={
+                      confirmPasswordError ? t(confirmPasswordError) : null
+                    }
+                  />
+
+                  <div
+                    role="group"
+                    aria-label={t("challenge.newPassword.requirements")}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                        fontSize: "10px",
+                        fontWeight: 500,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "var(--tellian-stone)",
+                        display: "block",
+                        marginBottom: "10px",
                       }}
-                      autoComplete="new-password"
-                      error={
-                        confirmPasswordError ? t(confirmPasswordError) : null
-                      }
-                    />
+                    >
+                      {t("challenge.newPassword.requirements")}
+                    </span>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
+                      {passwordRuleResults.map((r) => (
+                        <div
+                          key={r.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          {r.passed ? (
+                            <Check
+                              size={14}
+                              color="var(--tellian-success)"
+                              style={{ flexShrink: 0 }}
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              style={{
+                                width: 14,
+                                height: 14,
+                                flexShrink: 0,
+                                display: "inline-block",
+                                borderRadius: "50%",
+                                border: `1.5px solid ${
+                                  newPassword.length > 0
+                                    ? "var(--tellian-error)"
+                                    : "var(--tellian-line)"
+                                }`,
+                              }}
+                            />
+                          )}
+                          <span
+                            style={{
+                              fontFamily:
+                                "var(--font-inter), 'Inter', sans-serif",
+                              fontSize: "12px",
+                              color: r.passed
+                                ? "var(--tellian-success)"
+                                : newPassword.length > 0
+                                  ? "var(--tellian-dark)"
+                                  : "var(--tellian-stone)",
+                              transition: "color 200ms ease",
+                            }}
+                          >
+                            {t(r.labelKey)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ marginTop: "12px" }}>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: 3,
+                          backgroundColor: "var(--tellian-subtle)",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          role="progressbar"
+                          aria-valuenow={passedRuleCount}
+                          aria-valuemin={0}
+                          aria-valuemax={passwordRuleResults.length}
+                          aria-label={t("challenge.newPassword.progress", {
+                            passed: passedRuleCount,
+                            total: passwordRuleResults.length,
+                          })}
+                          style={{
+                            width: `${passwordProgressFraction * 100}%`,
+                            height: "100%",
+                            backgroundColor:
+                              newPassword.length > 0
+                                ? passwordProgressColor
+                                : "transparent",
+                            borderRadius: 2,
+                            transition: `width ${DURATION.normal}ms ${EASE.standard}, background-color ${DURATION.normal}ms ease`,
+                          }}
+                        />
+                      </div>
+                      <span
+                        aria-live="polite"
+                        style={{
+                          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                          fontSize: "11px",
+                          color: "var(--tellian-stone)",
+                          display: "block",
+                          marginTop: "6px",
+                        }}
+                      >
+                        {newPassword.length > 0 &&
+                          t("challenge.newPassword.progress", {
+                            passed: passedRuleCount,
+                            total: passwordRuleResults.length,
+                          })}
+                      </span>
+                    </div>
                   </div>
                 </>
               ) : (
-                <Field
+                <FloatingField
                   id="mfaCode"
                   label={t("challenge.mfa.label")}
                   type="text"
@@ -805,7 +1042,19 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
                 />
               )}
               <ErrorText error={error} />
-              <SubmitButton loading={loading} label={t("challenge.submit")} />
+              <SubmitButton
+                loading={loading}
+                label={
+                  stage.kind === "newPassword"
+                    ? t("challenge.newPassword.submit")
+                    : t("challenge.submit")
+                }
+                loadingLabel={
+                  stage.kind === "newPassword"
+                    ? t("challenge.newPassword.loading")
+                    : undefined
+                }
+              />
               {stage.kind === "mfa" && (
                 <button
                   type="button"
@@ -828,77 +1077,45 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
           )} */}
         </div>
 
-        <div className="flex items-center gap-3 mt-auto pt-8 pb-2">
-          <span
-            aria-hidden
-            style={{
-              display: "inline-block",
-              width: "24px",
-              height: "1px",
-              backgroundColor: "var(--tellian-line)",
-              flexShrink: 0,
-            }}
-          />
-          <span style={footerStyle}>{t("login.footer")}</span>
+        <div
+          className="flex items-center flex-wrap gap-4 mt-auto"
+          style={{
+            borderTop: "1px solid var(--tellian-line)",
+            paddingTop: "24px",
+            paddingBottom: "clamp(8px, 3vw, 20px)",
+            justifyContent:
+              stage.kind === "credentials" ? "space-between" : "flex-end",
+          }}
+        >
+          {stage.kind === "credentials" && (
+            <a
+              href={config.altLink.href}
+              style={mutedLinkStyle}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--tellian-dark)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--tellian-stone)")
+              }
+            >
+              {t(config.altLink.labelKey)} →
+            </a>
+          )}
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden
+              style={{
+                display: "inline-block",
+                width: "16px",
+                height: "1px",
+                backgroundColor: "var(--tellian-line)",
+                flexShrink: 0,
+              }}
+            />
+            <span style={footerStyle}>{t("login.footer")}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({
-  id,
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  autoComplete,
-  error,
-}: {
-  id: string;
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  autoComplete?: string;
-  error?: string | null;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} style={labelStyle}>
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        aria-invalid={Boolean(error) || undefined}
-        className="placeholder:text-tellian-muted"
-        style={{
-          ...inputStyle,
-          borderBottom: `1px solid ${error ? "var(--tellian-error)" : "var(--tellian-line)"}`,
-        }}
-        onFocus={(e) =>
-          (e.currentTarget.style.borderBottomColor = error
-            ? "var(--tellian-error)"
-            : "var(--tellian-dark)")
-        }
-        onBlur={(e) =>
-          (e.currentTarget.style.borderBottomColor = error
-            ? "var(--tellian-error)"
-            : "var(--tellian-line)")
-        }
-      />
-      {error && (
-        <p role="alert" style={fieldErrorStyle}>
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -908,15 +1125,6 @@ function ErrorText({ error }: { error: string | null }) {
   return (
     <p role="alert" style={errorStyle}>
       {error}
-    </p>
-  );
-}
-
-function InfoText({ message }: { message: string | null }) {
-  if (!message) return null;
-  return (
-    <p role="status" style={infoStyle}>
-      {message}
     </p>
   );
 }
@@ -940,6 +1148,7 @@ function MfaSetupSecret({
           backgroundColor: "#FFFFFF",
           display: "inline-block",
           border: "1px solid var(--tellian-line)",
+          borderRadius: "4px",
         }}
       >
         <QRCodeSVG value={otpauthUrl} size={176} level="M" />
@@ -948,18 +1157,26 @@ function MfaSetupSecret({
   );
 }
 
-function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+function SubmitButton({
+  loading,
+  label,
+  loadingLabel,
+}: {
+  loading: boolean;
+  label: string;
+  loadingLabel?: string;
+}) {
   return (
     <button
       type="submit"
       disabled={loading}
-      className="hover:bg-tellian-charcoal active:scale-[0.98]"
+      className="hover:bg-tellian-button-hover active:scale-[0.98]"
       style={{
         width: "100%",
         height: "56px",
-        marginTop: "32px",
-        backgroundColor: "var(--tellian-dark)",
-        color: "#FFFFFF",
+        marginTop: "8px",
+        backgroundColor: "var(--tellian-button)",
+        color: "var(--tellian-dark)",
         border: "none",
         borderRadius: 0,
         cursor: loading ? "not-allowed" : "pointer",
@@ -976,7 +1193,7 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
         transition: "background-color 300ms ease-out, opacity 300ms ease-out",
       }}
     >
-      {label}
+      {loading && loadingLabel ? loadingLabel : label}
       {loading ? (
         <Loader2 size={16} className="animate-spin" />
       ) : (
@@ -1007,13 +1224,15 @@ function skipButtonStyle(loading: boolean): React.CSSProperties {
 const linkStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "8px",
+  gap: "6px",
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "13px",
+  fontSize: "11px",
   fontWeight: 400,
-  letterSpacing: "0.05em",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
   color: "var(--tellian-stone)",
   textDecoration: "none",
+  padding: "8px 0",
   transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
 };
 
@@ -1021,57 +1240,32 @@ const eyebrowStyle: React.CSSProperties = {
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
   fontSize: "10px",
   fontWeight: 500,
-  letterSpacing: "0.2em",
+  letterSpacing: "0.22em",
   textTransform: "uppercase",
   color: "var(--tellian-stone)",
   display: "block",
-  marginTop: "48px",
 };
 
 const headlineStyle: React.CSSProperties = {
-  fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-  fontSize: "clamp(36px, 5vw, 48px)",
-  fontWeight: 300,
+  fontFamily: "var(--font-lustria), 'Lustria', serif",
+  fontSize: "clamp(28px, 6vw, 48px)",
+  fontWeight: 400,
+  letterSpacing: "-0.025em",
   color: "var(--tellian-dark)",
   margin: 0,
   marginTop: "16px",
-  lineHeight: 1.1,
+  lineHeight: 1.05,
 };
 
 const subtextStyle: React.CSSProperties = {
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "14px",
-  fontWeight: 400,
-  color: "var(--tellian-stone)",
-  lineHeight: 1.6,
-  marginTop: "20px",
-  marginBottom: 0,
-  maxWidth: "340px",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "13px",
-  fontWeight: 500,
-  letterSpacing: "0.05em",
-  color: "var(--tellian-stone)",
-  display: "block",
-  marginBottom: "8px",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  backgroundColor: "transparent",
-  border: "none",
-  borderBottom: "1px solid var(--tellian-line)",
-  borderRadius: 0,
-  padding: "12px 0 10px 0",
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
   fontSize: "15px",
   fontWeight: 400,
-  color: "var(--tellian-dark)",
-  outline: "none",
-  transition: "border-color 400ms cubic-bezier(0.16, 1, 0.3, 1)",
+  color: "var(--tellian-charcoal)",
+  lineHeight: 1.6,
+  marginTop: "16px",
+  marginBottom: 0,
+  maxWidth: "360px",
 };
 
 const errorStyle: React.CSSProperties = {
@@ -1083,38 +1277,25 @@ const errorStyle: React.CSSProperties = {
   marginBottom: 0,
 };
 
-const fieldErrorStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "12px",
-  fontWeight: 400,
-  color: "var(--tellian-error)",
-  marginTop: "6px",
-  marginBottom: 0,
-};
-
-const infoStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "13px",
-  fontWeight: 400,
-  color: "var(--tellian-stone)",
-  marginTop: "16px",
-  marginBottom: 0,
-};
-
 const mutedLinkStyle: React.CSSProperties = {
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "14px",
+  fontSize: "11px",
   fontWeight: 400,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
   color: "var(--tellian-stone)",
+  background: "transparent",
   textDecoration: "none",
+  padding: "8px 0",
+  transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
 };
 
 const footerStyle: React.CSSProperties = {
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "11px",
+  fontSize: "9px",
   fontWeight: 500,
-  letterSpacing: "0.2em",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
-  color: "var(--tellian-muted)",
+  color: "var(--tellian-stone)",
   whiteSpace: "nowrap",
 };

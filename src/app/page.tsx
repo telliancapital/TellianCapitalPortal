@@ -10,7 +10,6 @@ import {
   FileText,
   Loader2,
   Search,
-  X,
 } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
@@ -216,126 +215,136 @@ export default function DocumentsPage() {
   }
 
   return (
-    <PortalLayout>
+    <PortalLayout sectionLabel={t("portal.nav.reports")}>
       <div
+        className="flex flex-col lg:grid lg:grid-cols-[1fr_320px] lg:items-start"
         style={{
-          paddingTop: "clamp(48px, 8vh, 96px)",
-          paddingBottom: "clamp(32px, 5vh, 64px)",
+          maxWidth: "1200px",
+          paddingTop: "clamp(32px, 5vw, 48px)",
+          paddingBottom: "48px",
+          gap: "clamp(32px, 4vw, 64px)",
         }}
       >
+      <div>
+        <p
+          style={{
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+            fontSize: "14px",
+            color: "var(--tellian-stone)",
+            margin: "0 0 8px 0",
+          }}
+        >
+          {t("docs.greeting", { name: user?.username ?? "—" })}
+        </p>
         <h1
           style={{
-            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-            fontSize: "clamp(36px, 5vw, 56px)",
-            fontWeight: 300,
+            fontFamily: "var(--font-lustria), 'Lustria', serif",
+            fontSize: "clamp(24px, 4vw, 40px)",
+            fontWeight: 400,
             color: "var(--tellian-dark)",
             letterSpacing: "-0.02em",
             lineHeight: 1.1,
             margin: 0,
           }}
         >
-          {t("docs.headline")}
+          <em style={{ fontStyle: "italic", fontWeight: 400 }}>
+            {t("docs.headline")}
+          </em>
         </h1>
-        <p
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "16px",
-            fontWeight: 400,
-            color: "var(--tellian-stone)",
-            marginTop: "12px",
-            marginBottom: 0,
-          }}
-        >
-          {t("docs.count", { n: sortedDocuments.length })}
-        </p>
+        {!initialLoading && (
+          <p
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "var(--tellian-stone)",
+              marginTop: "8px",
+              marginBottom: 0,
+            }}
+          >
+            {t("docs.count", { n: sortedDocuments.length })}
+          </p>
+        )}
 
         <div
-          className="flex flex-wrap items-center justify-between gap-4"
-          style={{ marginTop: "32px" }}
+          className="flex flex-wrap items-end gap-4"
+          style={{ marginTop: "28px" }}
         >
           <div
             style={{
-              flex: "1 1 280px",
-              maxWidth: "400px",
+              flex: "1 1 180px",
+              minWidth: "180px",
               position: "relative",
             }}
           >
             <Search
-              size={18}
+              size={16}
               style={{
                 position: "absolute",
                 left: 0,
                 top: "50%",
                 transform: "translateY(-50%)",
                 color: "var(--tellian-stone)",
+                pointerEvents: "none",
               }}
             />
             <input
-              type="text"
+              type="search"
               placeholder={t("docs.search.placeholder")}
               value={searchTerm}
               onChange={(e) => updateSearch(e.target.value)}
               style={{
                 width: "100%",
-                padding: "12px 28px 12px 32px",
                 backgroundColor: "transparent",
                 border: "none",
-                borderBottom: "1px solid var(--tellian-line)",
+                borderBottom: "1.5px solid var(--tellian-line)",
+                borderRadius: 0,
+                padding: "10px 0 10px 28px",
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: "14px",
                 color: "var(--tellian-dark)",
                 outline: "none",
+                transition: "border-color 200ms ease",
               }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
+              }
+              onBlur={(e) =>
+                (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
+              }
             />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => updateSearch("")}
-                aria-label="Clear search"
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--tellian-stone)",
-                  padding: "4px",
-                }}
-              >
-                <X size={16} />
-              </button>
-            )}
           </div>
 
-          <label
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "10px",
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "11px",
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "var(--tellian-stone)",
-            }}
-          >
-            {t("docs.sort.label")}
+          <div className="flex items-center gap-2 shrink-0">
+            <label
+              htmlFor="sort-select"
+              style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "10px",
+                fontWeight: 500,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--tellian-stone)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("docs.sort.label")}
+            </label>
             <select
+              id="sort-select"
               value={sortKey}
               onChange={(e) => updateSort(e.target.value as SortKey)}
               style={{
                 background: "transparent",
                 border: "1px solid var(--tellian-line)",
-                padding: "8px 12px",
+                borderRadius: "2px",
+                padding: "6px 28px 6px 8px",
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 fontSize: "13px",
                 color: "var(--tellian-dark)",
                 cursor: "pointer",
-                letterSpacing: "normal",
-                textTransform: "none",
+                outline: "none",
+                minHeight: "36px",
               }}
             >
               <option value="newest">{t("docs.sort.newest")}</option>
@@ -343,9 +352,8 @@ export default function DocumentsPage() {
               <option value="titleAsc">{t("docs.sort.titleAsc")}</option>
               <option value="titleDesc">{t("docs.sort.titleDesc")}</option>
             </select>
-          </label>
+          </div>
         </div>
-      </div>
 
       {initialLoading ? (
         <div style={{ padding: "96px 0" }} className="flex justify-center">
@@ -353,12 +361,34 @@ export default function DocumentsPage() {
         </div>
       ) : sortedDocuments.length > 0 ? (
         <>
-          <div
-            style={{
-              borderTop: "1px solid var(--tellian-line)",
-              borderBottom: "1px solid var(--tellian-line)",
-            }}
-          >
+          <div style={{ marginTop: "24px" }}>
+            <div
+              className="hidden lg:grid"
+              style={{
+                gridTemplateColumns: "1fr 120px 120px 140px",
+                gap: "16px",
+                padding: "12px 0",
+                borderBottom: "1.5px solid var(--tellian-dark)",
+              }}
+            >
+              {[t("docs.col.title"), t("docs.col.date"), t("docs.col.format"), ""].map(
+                (h, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      color: "var(--tellian-stone)",
+                    }}
+                  >
+                    {h}
+                  </span>
+                ),
+              )}
+            </div>
             {isAdmin && groupedByCustomer
               ? groupedByCustomer.map(({ customerId, docs }) => (
                   <CustomerGroup
@@ -368,6 +398,7 @@ export default function DocumentsPage() {
                     locale={locale}
                     isOpen={expanded.has(customerId)}
                     onToggle={() => toggleExpanded(customerId)}
+                    t={t}
                   />
                 ))
               : paginatedDocuments.map((doc) => (
@@ -376,6 +407,7 @@ export default function DocumentsPage() {
                     doc={doc}
                     locale={locale}
                     isAdmin={false}
+                    t={t}
                   />
                 ))}
           </div>
@@ -473,6 +505,156 @@ export default function DocumentsPage() {
       ) : (
         <EmptyState t={t} />
       )}
+      </div>
+
+      <aside>
+        <div
+          style={{
+            padding: "24px",
+            backgroundColor: "var(--tellian-bg-secondary)",
+            borderRadius: "8px",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "10px",
+              fontWeight: 500,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: "var(--tellian-stone)",
+              display: "block",
+              marginBottom: "16px",
+            }}
+          >
+            {t("docs.rm.headline")}
+          </span>
+          {/* Placeholder RM — no real relationship-manager assignment exists
+              in the backend yet. Mirrors the design portal's demo RM-A entry. */}
+          <div className="flex items-start" style={{ gap: "16px" }}>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                backgroundColor: "var(--tellian-purple)",
+                color: "var(--tellian-bg)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "18px",
+                fontWeight: 500,
+                letterSpacing: "0.05em",
+                flexShrink: 0,
+              }}
+            >
+              RA
+            </div>
+            <div>
+              <span
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  color: "var(--tellian-dark)",
+                  display: "block",
+                }}
+              >
+                RM Platzhalter A
+              </span>
+              <a
+                href="mailto:rm.a@telliancapital.ch"
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "13px",
+                  color: "var(--tellian-stone)",
+                  textDecoration: "none",
+                  display: "block",
+                  marginTop: "4px",
+                }}
+              >
+                rm.a@telliancapital.ch
+              </a>
+              <a
+                href="tel:+41442244001"
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "13px",
+                  color: "var(--tellian-stone)",
+                  textDecoration: "none",
+                  display: "block",
+                  marginTop: "2px",
+                }}
+              >
+                +41 44 224 40 01
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Placeholder address — no postal-address field exists in the
+            backend yet. Mirrors the design portal's demo client address. */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderLeft: "2px solid var(--tellian-line)",
+            marginTop: "24px",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "10px",
+              fontWeight: 500,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: "var(--tellian-stone)",
+              display: "block",
+              marginBottom: "10px",
+            }}
+          >
+            {t("docs.profile.address")}
+          </span>
+          <div
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "13px",
+              color: "var(--tellian-dark)",
+              lineHeight: 1.5,
+            }}
+          >
+            <span style={{ display: "block" }}>Musterstrasse 1</span>
+            <span style={{ display: "block" }}>8001 Zürich</span>
+          </div>
+        </div>
+
+        <div
+          className="flex items-center"
+          style={{ gap: "10px", marginTop: "32px" }}
+        >
+          <div
+            style={{
+              width: "16px",
+              height: "1px",
+              backgroundColor: "var(--tellian-line)",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "9px",
+              fontWeight: 500,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--tellian-stone)",
+            }}
+          >
+            {t("login.footer")}
+          </span>
+        </div>
+      </aside>
+      </div>
     </PortalLayout>
   );
 }
@@ -481,29 +663,24 @@ function DocumentRow({
   doc,
   locale,
   isAdmin,
+  t,
 }: {
   doc: Document;
   locale: string;
   isAdmin: boolean;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
+  const dateLabel = `${isAdmin && doc.customerId ? `${doc.customerId} · ` : ""}${formatDate(doc.lastModified, locale)}`;
+
   return (
     <a
       href={doc.downloadUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="w-full text-left group"
+      className="grid grid-cols-1 lg:grid-cols-[1fr_120px_120px_140px] lg:items-center lg:gap-4 group"
       style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "6px 16px",
-        padding: "24px 0",
-        background: "transparent",
-        border: "none",
+        padding: "16px 0",
         borderBottom: "1px solid var(--tellian-line)",
-        cursor: "pointer",
-        width: "100%",
         textDecoration: "none",
         transition: "background-color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
       }}
@@ -514,48 +691,92 @@ function DocumentRow({
         (e.currentTarget.style.backgroundColor = "transparent")
       }
     >
-      <span
-        className="truncate w-full sm:w-auto sm:flex-1 sm:min-w-0"
-        style={{
-          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-          fontSize: "22px",
-          fontWeight: 400,
-          color: "var(--tellian-dark)",
-          lineHeight: 1.3,
-        }}
-      >
-        {doc.title}
-      </span>
+      {/* Mobile / tablet: stacked card row */}
+      <div className="flex items-start justify-between gap-3 lg:hidden">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "var(--tellian-dark)",
+              display: "block",
+            }}
+          >
+            {doc.title}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-inter), 'Inter', sans-serif",
+              fontSize: "12px",
+              color: "var(--tellian-stone)",
+              display: "block",
+              marginTop: "4px",
+            }}
+          >
+            {dateLabel} · {doc.fileFormat} · {doc.fileSize}
+          </span>
+        </div>
+        <span
+          aria-label={`${t("docs.download")}: ${doc.title}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: "44px",
+            minHeight: "44px",
+            color: "var(--tellian-stone)",
+            flexShrink: 0,
+          }}
+        >
+          <ArrowDownToLine size={16} />
+        </span>
+      </div>
 
-      <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end sm:shrink-0 gap-4">
+      {/* Desktop: 4-column grid row */}
+      <div className="hidden lg:contents">
+        <span
+          style={{
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+            fontSize: "14px",
+            fontWeight: 500,
+            color: "var(--tellian-dark)",
+          }}
+        >
+          {doc.title}
+        </span>
         <span
           style={{
             fontFamily: "var(--font-inter), 'Inter', sans-serif",
             fontSize: "13px",
-            fontWeight: 400,
             color: "var(--tellian-stone)",
           }}
         >
-          {isAdmin && doc.customerId ? `${doc.customerId} · ` : ""}
-          {formatDate(doc.lastModified, locale)}
+          {dateLabel}
         </span>
-        <div className="flex items-center gap-4 shrink-0">
-          <span
-            className="hidden md:inline"
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
-              fontWeight: 400,
-              color: "var(--tellian-muted)",
-            }}
-          >
-            {doc.fileFormat} · {doc.fileSize}
-          </span>
-          <ArrowDownToLine
-            size={18}
-            className="text-tellian-stone group-hover:text-tellian-dark transition-colors duration-200"
-          />
-        </div>
+        <span
+          style={{
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+            fontSize: "13px",
+            color: "var(--tellian-stone)",
+          }}
+        >
+          {doc.fileFormat} · {doc.fileSize}
+        </span>
+        <span
+          className="inline-flex items-center"
+          style={{
+            gap: "6px",
+            fontFamily: "var(--font-inter), 'Inter', sans-serif",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--tellian-stone)",
+          }}
+        >
+          <ArrowDownToLine size={14} />
+          {t("docs.download")}
+        </span>
       </div>
     </a>
   );
@@ -567,12 +788,14 @@ function CustomerGroup({
   locale,
   isOpen,
   onToggle,
+  t,
 }: {
   customerId: string;
   docs: Document[];
   locale: string;
   isOpen: boolean;
   onToggle: () => void;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
     <div style={{ borderBottom: "1px solid var(--tellian-line)" }}>
@@ -596,7 +819,7 @@ function CustomerGroup({
           className="flex items-center"
           style={{
             gap: "12px",
-            fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+            fontFamily: "var(--font-lustria), 'Lustria', serif",
             fontSize: "22px",
             fontWeight: 400,
             color: "var(--tellian-dark)",
@@ -627,6 +850,7 @@ function CustomerGroup({
               doc={doc}
               locale={locale}
               isAdmin={false}
+              t={t}
             />
           ))}
         </div>
@@ -651,7 +875,7 @@ function EmptySearchState({
       />
       <h2
         style={{
-          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+          fontFamily: "var(--font-lustria), 'Lustria', serif",
           fontSize: "28px",
           fontWeight: 400,
           color: "var(--tellian-dark)",
@@ -691,7 +915,7 @@ function EmptyState({ t }: { t: (key: "docs.empty.headline" | "docs.empty.subtit
       />
       <h2
         style={{
-          fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+          fontFamily: "var(--font-lustria), 'Lustria', serif",
           fontSize: "28px",
           fontWeight: 400,
           color: "var(--tellian-dark)",

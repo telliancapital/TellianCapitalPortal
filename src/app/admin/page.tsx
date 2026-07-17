@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Copy, KeyRound, Loader2, LogIn, Search, Shield, ShieldOff, UserPlus, X } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Loader2, Search, Shield, ShieldCheck, UserPlus, X, XCircle } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { ToastProvider, useToast } from "@/components/Toast";
+import { FloatingField } from "@/components/FloatingField";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -84,7 +85,7 @@ export default function AdminPage() {
 
   if (loading || !user || !canViewUsers) {
     return (
-      <PortalLayout>
+      <PortalLayout sectionLabel={t("portal.nav.userManagement")}>
         <div style={{ padding: "96px 0" }} className="flex justify-center">
           <Loader2 className="animate-spin" />
         </div>
@@ -173,36 +174,39 @@ export default function AdminPage() {
   }
 
   return (
-    <PortalLayout>
+    <PortalLayout sectionLabel={t("portal.nav.userManagement")}>
       <ToastProvider>
       <div
         style={{
-          paddingTop: "clamp(48px, 8vh, 96px)",
-          paddingBottom: "clamp(32px, 5vh, 64px)",
+          paddingTop: "clamp(32px, 5vw, 48px)",
+          paddingBottom: "24px",
         }}
       >
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1
               style={{
-                fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-                fontSize: "clamp(36px, 5vw, 56px)",
-                fontWeight: 300,
+                fontFamily: "var(--font-lustria), 'Lustria', serif",
+                fontSize: "clamp(24px, 4vw, 40px)",
+                fontWeight: 400,
                 color: "var(--tellian-dark)",
                 letterSpacing: "-0.02em",
                 lineHeight: 1.1,
                 margin: 0,
               }}
             >
-              {t("admin.headline")}
+              <em style={{ fontStyle: "italic", fontWeight: 400 }}>
+                {t("admin.headline")}
+              </em>
             </h1>
             <p
               style={{
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "16px",
+                fontSize: "14px",
                 color: "var(--tellian-stone)",
-                marginTop: "12px",
+                marginTop: "8px",
                 marginBottom: 0,
+                lineHeight: 1.5,
               }}
             >
               {t("admin.subtext")}
@@ -211,9 +215,10 @@ export default function AdminPage() {
           {canManageUsers && (
             <button
               onClick={() => setShowCreate(true)}
+              className="hover:bg-tellian-button-hover"
               style={{
-                backgroundColor: "var(--tellian-dark)",
-                color: "#FFFFFF",
+                backgroundColor: "var(--tellian-button)",
+                color: "var(--tellian-dark)",
                 border: "none",
                 borderRadius: 0,
                 padding: "14px 24px",
@@ -234,52 +239,43 @@ export default function AdminPage() {
           )}
         </div>
 
-        <div style={{ marginTop: "48px", maxWidth: "400px", position: "relative" }}>
+        <div style={{ marginTop: "24px", maxWidth: "400px", position: "relative" }}>
           <Search
-            size={18}
+            size={16}
             style={{
               position: "absolute",
-              left: "0",
+              left: 0,
               top: "50%",
               transform: "translateY(-50%)",
               color: "var(--tellian-stone)",
+              pointerEvents: "none",
             }}
           />
           <input
-            type="text"
+            type="search"
             placeholder={t("admin.search.placeholder") ?? "Search users..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
               width: "100%",
-              padding: "12px 12px 12px 32px",
               backgroundColor: "transparent",
               border: "none",
-              borderBottom: "1px solid var(--tellian-line)",
+              borderBottom: "1.5px solid var(--tellian-line)",
+              borderRadius: 0,
+              padding: "10px 0 10px 28px",
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
               fontSize: "14px",
               color: "var(--tellian-dark)",
               outline: "none",
+              transition: "border-color 200ms ease",
             }}
+            onFocus={(e) =>
+              (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
+            }
+            onBlur={(e) =>
+              (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
+            }
           />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              style={{
-                position: "absolute",
-                right: "0",
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--tellian-stone)",
-                padding: "4px",
-              }}
-            >
-              <X size={16} />
-            </button>
-          )}
         </div>
       </div>
 
@@ -310,12 +306,7 @@ export default function AdminPage() {
         </p>
       )}
 
-      <div
-        style={{
-          borderTop: "1px solid var(--tellian-line)",
-          borderBottom: "1px solid var(--tellian-line)",
-        }}
-      >
+      <div>
         <div
           className="hidden md:grid md:items-center"
           style={{
@@ -323,12 +314,12 @@ export default function AdminPage() {
               ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
               : "minmax(0, 2.2fr) 140px 110px 100px",
             gap: "24px",
-            padding: "16px 0",
-            borderBottom: "1px solid var(--tellian-line)",
+            padding: "12px 0",
+            borderBottom: "1.5px solid var(--tellian-dark)",
             fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "11px",
-            fontWeight: 500,
-            letterSpacing: "0.18em",
+            fontSize: "10px",
+            fontWeight: 600,
+            letterSpacing: "0.2em",
             textTransform: "uppercase",
             color: "var(--tellian-stone)",
           }}
@@ -475,8 +466,7 @@ function UserRow({
         gridTemplateColumns: showActions
           ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
           : "minmax(0, 2.2fr) 140px 110px 100px",
-        padding: "16px 0",
-        minHeight: "64px",
+        padding: "14px 0",
         borderBottom: "1px solid var(--tellian-line)",
         gap: "24px",
         fontFamily: "var(--font-inter), 'Inter', sans-serif",
@@ -485,8 +475,8 @@ function UserRow({
       <div
         style={{
           ...rowCell,
-          fontSize: "15px",
-          fontWeight: 400,
+          fontSize: "13px",
+          fontWeight: 500,
           color: "var(--tellian-dark)",
           overflow: "hidden",
         }}
@@ -541,54 +531,21 @@ function UserRow({
         )}
       </div>
 
-      <div
-        style={{
-          ...rowCell,
-          fontSize: "13px",
-          color: user.enabled ? "var(--tellian-dark)" : "var(--tellian-stone)",
-        }}
-      >
-        {user.enabled ? t("admin.status.enabled") : t("admin.status.disabled")}
+      <div style={rowCell}>
+        <StatusBadge enabled={user.enabled} t={t} />
       </div>
 
-      <div
-        style={{
-          ...rowCell,
-          fontSize: "13px",
-          color: user.mfaEnabled ? "#059669" : "var(--tellian-stone)",
-          gap: "6px",
-        }}
-      >
-        {user.mfaEnabled ? (
-          <Shield size={14} style={{ color: "#059669" }} />
-        ) : (
-          <ShieldOff size={14} style={{ color: "var(--tellian-stone)" }} />
-        )}
-        {user.mfaEnabled ? t("admin.mfa.on") : t("admin.mfa.off")}
+      <div style={rowCell}>
+        <MfaBadge enabled={user.mfaEnabled} t={t} />
       </div>
 
       {showActions && (
-        <div className="mt-3 md:mt-0 flex gap-2 whitespace-nowrap items-center" style={{ minWidth: 0 }}>
+        <div className="mt-3 md:mt-0 flex flex-wrap gap-1 items-center" style={{ minWidth: 0 }}>
           {canManage && (
             <button
               onClick={onToggle}
               disabled={isSelf}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--tellian-line)",
-                padding: "0 14px",
-                height: "32px",
-                fontFamily: "inherit",
-                fontSize: "12px",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--tellian-dark)",
-                cursor: isSelf ? "not-allowed" : "pointer",
-                opacity: isSelf ? 0.5 : 1,
-                display: "inline-flex",
-                alignItems: "center",
-                lineHeight: 1,
-              }}
+              style={actionBtnStyle(isSelf)}
             >
               {user.enabled
                 ? t("admin.action.disable")
@@ -599,59 +556,28 @@ function UserRow({
             <button
               onClick={onToggleMfa}
               disabled={isSelf}
-              title={user.mfaEnabled ? t("admin.action.mfaDisable") : t("admin.action.mfaEnable")}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--tellian-line)",
-                padding: "0 10px",
-                height: "32px",
-                fontFamily: "inherit",
-                fontSize: "12px",
-                color: user.mfaEnabled ? "#059669" : "var(--tellian-stone)",
-                cursor: isSelf ? "not-allowed" : "pointer",
-                opacity: isSelf ? 0.5 : 1,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                lineHeight: 1,
-              }}
+              style={actionBtnStyle(isSelf)}
             >
-              {user.mfaEnabled ? <Shield size={16} /> : <ShieldOff size={16} />}
+              {user.mfaEnabled
+                ? t("admin.action.mfaDisable")
+                : t("admin.action.mfaEnable")}
             </button>
           )}
           {canManage && (
-            <IconButton
+            <button
               onClick={onResetPassword}
               disabled={isSelf}
-              title={t("admin.action.resetPassword")}
+              style={actionBtnStyle(isSelf)}
             >
-              <KeyRound size={14} />
-            </IconButton>
+              {t("admin.action.resetPassword")}
+            </button>
           )}
           {canImpersonate && (
             <button
               onClick={onImpersonate}
               disabled={!canImpersonateRow}
-              title={t("admin.action.impersonate")}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--tellian-line)",
-                padding: "0 14px",
-                height: "32px",
-                fontFamily: "inherit",
-                fontSize: "12px",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--tellian-dark)",
-                cursor: canImpersonateRow ? "pointer" : "not-allowed",
-                opacity: canImpersonateRow ? 1 : 0.4,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                lineHeight: 1,
-              }}
+              style={actionBtnStyle(!canImpersonateRow)}
             >
-              <LogIn size={12} />
               {t("admin.action.impersonate")}
             </button>
           )}
@@ -661,40 +587,59 @@ function UserRow({
   );
 }
 
-function IconButton({
-  onClick,
-  disabled,
-  title,
-  children,
+function StatusBadge({
+  enabled,
+  t,
 }: {
-  onClick: () => void;
-  disabled?: boolean;
-  title: string;
-  children: React.ReactNode;
+  enabled: boolean;
+  t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
+    <span
       style={{
-        background: "transparent",
-        border: "1px solid var(--tellian-line)",
-        padding: "8px",
-        height: "32px",
-        width: "32px",
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        color: "var(--tellian-dark)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
+        gap: "6px",
+        fontFamily: "var(--font-inter), 'Inter', sans-serif",
+        fontSize: "13px",
+        color: enabled ? "var(--tellian-success)" : "var(--tellian-stone)",
       }}
     >
-      {children}
-    </button>
+      {enabled ? (
+        <CheckCircle2 size={14} style={{ color: "var(--tellian-success)" }} />
+      ) : (
+        <XCircle size={14} style={{ color: "var(--tellian-stone)" }} />
+      )}
+      {enabled ? t("admin.status.enabled") : t("admin.status.disabled")}
+    </span>
+  );
+}
+
+function MfaBadge({
+  enabled,
+  t,
+}: {
+  enabled: boolean;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        fontFamily: "var(--font-inter), 'Inter', sans-serif",
+        fontSize: "13px",
+        color: enabled ? "var(--tellian-success)" : "var(--tellian-stone)",
+      }}
+    >
+      {enabled ? (
+        <ShieldCheck size={14} style={{ color: "var(--tellian-success)" }} />
+      ) : (
+        <Shield size={14} style={{ color: "var(--tellian-stone)" }} />
+      )}
+      {enabled ? t("admin.mfa.on") : t("admin.mfa.off")}
+    </span>
   );
 }
 
@@ -808,11 +753,13 @@ function CreateUserModal({
         <div className="flex items-center justify-between" style={{ marginBottom: "24px" }}>
           <h2
             style={{
-              fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
-              fontSize: "28px",
+              fontFamily: "var(--font-lustria), 'Lustria', serif",
+              fontSize: "24px",
               fontWeight: 400,
+              fontStyle: "italic",
               color: "var(--tellian-dark)",
               margin: 0,
+              lineHeight: 1.2,
             }}
           >
             {result ? t("admin.toast.created.title") : t("admin.modal.title")}
@@ -851,33 +798,32 @@ function CreateUserModal({
           </div>
           {isStaff ? (
             <div style={{ marginTop: "20px" }}>
-              <label style={modalLabel}>{t("admin.modal.email")}</label>
-              <input
-                required
+              <FloatingField
+                id="modal-email"
+                label={t("admin.modal.email")}
                 type="email"
+                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={modalInput}
+                onChange={setEmail}
               />
             </div>
           ) : (
             <div style={{ marginTop: "20px" }}>
-              <label style={modalLabel}>{t("admin.modal.customerId")}</label>
-              <input
+              <FloatingField
+                id="modal-customerId"
+                label={t("admin.modal.customerId")}
                 required
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                style={modalInput}
+                onChange={setCustomerId}
               />
             </div>
           )}
           <div style={{ marginTop: "20px" }}>
-            <label style={modalLabel}>{t("admin.modal.tempPassword")}</label>
-            <input
-              type="text"
+            <FloatingField
+              id="modal-tempPassword"
+              label={t("admin.modal.tempPassword")}
               value={tempPassword}
-              onChange={(e) => setTempPassword(e.target.value)}
-              style={modalInput}
+              onChange={setTempPassword}
             />
           </div>
 
@@ -917,11 +863,12 @@ function CreateUserModal({
             <button
               type="submit"
               disabled={submitting}
+              className="hover:bg-tellian-button-hover"
               style={{
                 flex: 1,
                 height: "48px",
-                backgroundColor: "var(--tellian-dark)",
-                color: "#FFFFFF",
+                backgroundColor: "var(--tellian-button)",
+                color: "var(--tellian-dark)",
                 border: "none",
                 fontFamily: "inherit",
                 fontSize: "11px",
@@ -977,11 +924,12 @@ function CreatedCredentials({
         <button
           type="button"
           onClick={onDone}
+          className="hover:bg-tellian-button-hover"
           style={{
             flex: 1,
             height: "48px",
-            backgroundColor: "var(--tellian-dark)",
-            color: "#FFFFFF",
+            backgroundColor: "var(--tellian-button)",
+            color: "var(--tellian-dark)",
             border: "none",
             fontFamily: "inherit",
             fontSize: "11px",
@@ -1019,10 +967,11 @@ function CredentialField({ value }: { value: string }) {
           minWidth: 0,
           padding: "12px",
           border: "1px solid var(--tellian-line)",
+          borderRadius: "4px",
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
           fontSize: "14px",
           color: "var(--tellian-dark)",
-          backgroundColor: "var(--tellian-bg)",
+          backgroundColor: "var(--tellian-bg-secondary)",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -1073,6 +1022,24 @@ const rowCell: React.CSSProperties = {
   minWidth: 0,
 };
 
+function actionBtnStyle(disabled = false): React.CSSProperties {
+  return {
+    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+    fontSize: "11px",
+    letterSpacing: "0.06em",
+    color: disabled ? "var(--tellian-line)" : "var(--tellian-stone)",
+    background: "transparent",
+    border: "none",
+    cursor: disabled ? "not-allowed" : "pointer",
+    padding: "6px 8px",
+    outline: "none",
+    whiteSpace: "nowrap",
+    minHeight: "32px",
+    transition: "color 200ms ease",
+    opacity: disabled ? 0.5 : 1,
+  };
+}
+
 const modalLabel: React.CSSProperties = {
   display: "block",
   marginBottom: "8px",
@@ -1087,6 +1054,7 @@ const modalInput: React.CSSProperties = {
   width: "100%",
   backgroundColor: "transparent",
   border: "1px solid var(--tellian-line)",
+  borderRadius: "2px",
   padding: "12px",
   fontFamily: "var(--font-inter), 'Inter', sans-serif",
   fontSize: "14px",

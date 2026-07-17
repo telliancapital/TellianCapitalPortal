@@ -14,9 +14,9 @@ export function LanguageToggle() {
           {i > 0 && (
             <span
               style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
                 color: "var(--tellian-line)",
-                fontSize: "13px",
-                marginRight: "4px",
+                fontSize: "11px",
                 userSelect: "none",
               }}
             >
@@ -27,19 +27,22 @@ export function LanguageToggle() {
             onClick={() => setLocale(l)}
             style={{
               fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
-              fontWeight: locale === l ? 600 : 400,
-              letterSpacing: "0.05em",
+              fontSize: "11px",
+              fontWeight: locale === l ? 700 : 400,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: locale === l ? "var(--tellian-dark)" : "var(--tellian-muted)",
+              color: locale === l ? "var(--tellian-dark)" : "var(--tellian-stone)",
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              padding: "4px 4px",
+              padding: "8px 4px",
+              outline: "none",
+              minWidth: "28px",
+              minHeight: "36px",
               transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            {l}
+            {l.toUpperCase()}
           </button>
         </span>
       ))}
