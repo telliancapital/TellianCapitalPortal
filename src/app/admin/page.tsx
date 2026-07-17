@@ -6,6 +6,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Loader2, Search, Shield,
 import { PortalLayout } from "@/components/PortalLayout";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { FloatingField } from "@/components/FloatingField";
+import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -18,6 +19,8 @@ interface AdminUser {
   status: string;
   groups: string[];
   mfaEnabled: boolean;
+  firstName?: string;
+  lastName?: string;
 }
 
 export default function AdminPage() {
@@ -423,6 +426,7 @@ export default function AdminPage() {
             void loadUsers();
           }}
           t={t}
+          users={users}
         />
       )}
       </ToastProvider>
@@ -647,16 +651,27 @@ function CreateUserModal({
   onClose,
   onCreated,
   t,
+  users,
 }: {
   onClose: () => void;
   onCreated: () => void;
   t: (key: any) => string;
+  users: AdminUser[];
 }) {
   const toast = useToast();
   const [customerId, setCustomerId] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("User");
   const [tempPassword, setTempPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [profileImageKey, setProfileImageKey] = useState<string | null>(null);
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [assignedRm, setAssignedRm] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -666,9 +681,33 @@ function CreateUserModal({
   } | null>(null);
 
   const isStaff = role === "Admin" || role === "InternalEmployee";
+  const rmCandidates = users.filter(
+    (u) => u.groups.includes("Admin") || u.groups.includes("InternalEmployee"),
+  );
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+    const required = t("admin.modal.fieldRequired");
+    if (!firstName.trim()) errors.firstName = required;
+    if (!lastName.trim()) errors.lastName = required;
+    if (!phoneNumber.trim()) errors.phoneNumber = required;
+    if (!profileImageKey) errors.profileImage = required;
+    if (isStaff) {
+      if (!email.trim()) errors.email = required;
+    } else {
+      if (!customerId.trim()) errors.customerId = required;
+      if (!street.trim()) errors.street = required;
+      if (!city.trim()) errors.city = required;
+      if (!zipCode.trim()) errors.zipCode = required;
+      if (!assignedRm) errors.assignedRm = required;
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!validate()) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -677,14 +716,30 @@ function CreateUserModal({
         temporaryPassword?: string;
         email?: string;
         customerId?: string;
+        phoneNumber: string;
+        firstName: string;
+        lastName: string;
+        profileImageKey: string | null;
+        street?: string;
+        city?: string;
+        zipCode?: string;
+        assignedRm?: string;
       } = {
         role,
         temporaryPassword: tempPassword || undefined,
+        phoneNumber: phoneNumber.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        profileImageKey,
       };
       if (isStaff) {
         payload.email = email.trim();
       } else {
         payload.customerId = customerId.trim();
+        payload.street = street.trim();
+        payload.city = city.trim();
+        payload.zipCode = zipCode.trim();
+        payload.assignedRm = assignedRm;
       }
 
       const res = await fetch("/api/admin/create-user", {
@@ -736,8 +791,9 @@ function CreateUserModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px",
-        zIndex: 50,
+        padding: "5vh 16px",
+        overflowY: "auto",
+        zIndex: 200,
       }}
       onClick={onClose}
     >
@@ -746,7 +802,9 @@ function CreateUserModal({
         style={{
           backgroundColor: "var(--tellian-bg)",
           width: "100%",
-          maxWidth: "480px",
+          maxWidth: "640px",
+          maxHeight: "90vh",
+          overflowY: "auto",
           padding: "32px",
         }}
       >
@@ -796,6 +854,61 @@ function CreateUserModal({
               ))}
             </select>
           </div>
+          <div style={{ marginTop: "20px" }}>
+            <FloatingField
+              id="modal-firstName"
+              label={t("admin.modal.firstName")}
+              required
+              value={firstName}
+              onChange={setFirstName}
+              error={fieldErrors.firstName}
+            />
+          </div>
+          <div style={{ marginTop: "20px" }}>
+            <FloatingField
+              id="modal-lastName"
+              label={t("admin.modal.lastName")}
+              required
+              value={lastName}
+              onChange={setLastName}
+              error={fieldErrors.lastName}
+            />
+          </div>
+          <div style={{ marginTop: "20px" }}>
+            <FloatingField
+              id="modal-phone"
+              label={t("admin.modal.phone")}
+              type="tel"
+              required
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              error={fieldErrors.phoneNumber}
+            />
+          </div>
+          <div style={{ marginTop: "20px" }}>
+            <ProfileImageUpload
+              label={t("admin.modal.profileImage")}
+              imageKey={profileImageKey}
+              onImageKeyChange={setProfileImageKey}
+              disabled={submitting}
+              invalidTypeMessage={t("admin.modal.image.invalidType")}
+              tooLargeMessage={t("admin.modal.image.tooLarge")}
+              uploadFailedMessage={t("admin.modal.image.uploadFailed")}
+            />
+            {fieldErrors.profileImage && (
+              <p
+                role="alert"
+                style={{
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "12px",
+                  color: "var(--tellian-error)",
+                  marginTop: "6px",
+                }}
+              >
+                {fieldErrors.profileImage}
+              </p>
+            )}
+          </div>
           {isStaff ? (
             <div style={{ marginTop: "20px" }}>
               <FloatingField
@@ -805,18 +918,88 @@ function CreateUserModal({
                 required
                 value={email}
                 onChange={setEmail}
+                error={fieldErrors.email}
               />
             </div>
           ) : (
-            <div style={{ marginTop: "20px" }}>
-              <FloatingField
-                id="modal-customerId"
-                label={t("admin.modal.customerId")}
-                required
-                value={customerId}
-                onChange={setCustomerId}
-              />
-            </div>
+            <>
+              <div style={{ marginTop: "20px" }}>
+                <FloatingField
+                  id="modal-customerId"
+                  label={t("admin.modal.customerId")}
+                  required
+                  value={customerId}
+                  onChange={setCustomerId}
+                  error={fieldErrors.customerId}
+                />
+              </div>
+              <div style={{ marginTop: "20px" }}>
+                <FloatingField
+                  id="modal-street"
+                  label={t("admin.modal.street")}
+                  required
+                  value={street}
+                  onChange={setStreet}
+                  error={fieldErrors.street}
+                />
+              </div>
+              <div style={{ marginTop: "20px", display: "flex", gap: "12px" }}>
+                <div style={{ flex: 2 }}>
+                  <FloatingField
+                    id="modal-city"
+                    label={t("admin.modal.city")}
+                    required
+                    value={city}
+                    onChange={setCity}
+                    error={fieldErrors.city}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <FloatingField
+                    id="modal-zipCode"
+                    label={t("admin.modal.zipCode")}
+                    required
+                    value={zipCode}
+                    onChange={setZipCode}
+                    error={fieldErrors.zipCode}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: "20px" }}>
+                <label style={modalLabel}>{t("admin.modal.assignedRm")}</label>
+                <select
+                  value={assignedRm}
+                  onChange={(e) => setAssignedRm(e.target.value)}
+                  style={{
+                    ...modalInput,
+                    borderColor: fieldErrors.assignedRm
+                      ? "var(--tellian-error)"
+                      : "var(--tellian-line)",
+                  }}
+                >
+                  <option value="">—</option>
+                  {rmCandidates.map((rmUser) => (
+                    <option key={rmUser.username} value={rmUser.username}>
+                      {`${rmUser.firstName ?? ""} ${rmUser.lastName ?? ""}`.trim() ||
+                        rmUser.username}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.assignedRm && (
+                  <p
+                    role="alert"
+                    style={{
+                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                      fontSize: "12px",
+                      color: "var(--tellian-error)",
+                      marginTop: "6px",
+                    }}
+                  >
+                    {fieldErrors.assignedRm}
+                  </p>
+                )}
+              </div>
+            </>
           )}
           <div style={{ marginTop: "20px" }}>
             <FloatingField

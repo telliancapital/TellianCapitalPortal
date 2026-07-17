@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
+  AdminListGroupsForUserCommand,
   UsernameExistsException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import {
@@ -18,10 +19,19 @@ interface CreateUserBody {
   email?: string;
   role?: string;
   temporaryPassword?: string;
+  phoneNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageKey?: string;
+  street?: string;
+  city?: string;
+  zipCode?: string;
+  assignedRm?: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[A-Za-z0-9_-]+$/;
+const PHONE_RE = /^[0-9+()\-.\s]{7,32}$/;
 
 const ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const ID_LENGTH = 10;
@@ -80,8 +90,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
+  // Profile fields required for every role.
+  const phoneNumber = body.phoneNumber?.trim();
+  const firstName = body.firstName?.trim();
+  const lastName = body.lastName?.trim();
+  const profileImageKey = body.profileImageKey?.trim();
+
+  if (!firstName) {
+    return NextResponse.json(
+      { error: "First name is required." },
+      { status: 400 },
+    );
+  }
+  if (!lastName) {
+    return NextResponse.json(
+      { error: "Last name is required." },
+      { status: 400 },
+    );
+  }
+  if (!phoneNumber) {
+    return NextResponse.json(
+      { error: "Phone number is required." },
+      { status: 400 },
+    );
+  }
+  if (!PHONE_RE.test(phoneNumber)) {
+    return NextResponse.json(
+      { error: "The phone number is not in a valid format." },
+      { status: 400 },
+    );
+  }
+  if (!profileImageKey) {
+    return NextResponse.json(
+      { error: "A profile image is required." },
+      { status: 400 },
+    );
+  }
+  if (!profileImageKey.startsWith("profile-images/")) {
+    return NextResponse.json(
+      { error: "Invalid profile image reference." },
+      { status: 400 },
+    );
+  }
+
   let username: string;
-  const userAttributes: { Name: string; Value: string }[] = [];
+  const userAttributes: { Name: string; Value: string }[] = [
+    { Name: "custom:firstName", Value: firstName },
+    { Name: "custom:lastName", Value: lastName },
+    { Name: "custom:phoneNumber", Value: phoneNumber },
+    { Name: "custom:profileImageKey", Value: profileImageKey },
+  ];
 
   if (isStaffRole(role)) {
     const email = body.email?.trim().toLowerCase();
@@ -117,6 +175,72 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const street = body.street?.trim();
+    const city = body.city?.trim();
+    const zipCode = body.zipCode?.trim();
+    const assignedRm = body.assignedRm?.trim();
+
+    if (!street) {
+      return NextResponse.json(
+        { error: "Street is required." },
+        { status: 400 },
+      );
+    }
+    if (!city) {
+      return NextResponse.json(
+        { error: "City is required." },
+        { status: 400 },
+      );
+    }
+    if (!zipCode) {
+      return NextResponse.json(
+        { error: "Zip code is required." },
+        { status: 400 },
+      );
+    }
+    if (!assignedRm) {
+      return NextResponse.json(
+        { error: "A Relationship Manager must be selected." },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const rmGroups = await cognito.send(
+        new AdminListGroupsForUserCommand({
+          UserPoolId: getUserPoolId(),
+          Username: assignedRm,
+        }),
+      );
+      const groupNames = rmGroups.Groups?.map((g) => g.GroupName) ?? [];
+      if (
+        !groupNames.includes(COGNITO_GROUPS.ADMIN) &&
+        !groupNames.includes(COGNITO_GROUPS.INTERNAL)
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected Relationship Manager is not a valid Admin or Internal Employee.",
+          },
+          { status: 400 },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            "Selected Relationship Manager is not a valid Admin or Internal Employee.",
+        },
+        { status: 400 },
+      );
+    }
+
+    userAttributes.push({ Name: "custom:street", Value: street });
+    userAttributes.push({ Name: "custom:city", Value: city });
+    userAttributes.push({ Name: "custom:zipCode", Value: zipCode });
+    userAttributes.push({ Name: "custom:assignedRm", Value: assignedRm });
+
     username = customerId;
   }
 

@@ -26,6 +26,8 @@ export async function GET() {
         const username = u.Username ?? "";
         let groups: string[] = [];
         let mfaEnabled = false;
+        let firstName: string | undefined;
+        let lastName: string | undefined;
 
         try {
           const [groupsData, userData] = await Promise.all([
@@ -49,13 +51,20 @@ export async function GET() {
 
           // Check if MFA is enabled in UserMFASettingList, as a preference, or via our standard attribute flags
           const attributes = ["nickname", "profile", "website"];
-          const mfaFlag = userData.UserAttributes?.some(a => 
+          const mfaFlag = userData.UserAttributes?.some(a =>
             attributes.includes(a.Name!) && a.Value === "MFA_ENABLED"
           ) ?? false;
           mfaEnabled =
             (userData.UserMFASettingList ?? []).includes("SOFTWARE_TOKEN_MFA") ||
             userData.PreferredMfaSetting === "SOFTWARE_TOKEN_MFA" ||
             mfaFlag;
+
+          firstName = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:firstName",
+          )?.Value;
+          lastName = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:lastName",
+          )?.Value;
         } catch (err) {
           console.warn(
             `Failed to fetch extra details for user ${username}`,
@@ -70,6 +79,8 @@ export async function GET() {
           createdAt: u.UserCreateDate?.toISOString(),
           groups,
           mfaEnabled,
+          firstName,
+          lastName,
         };
       }),
     );

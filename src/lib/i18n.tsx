@@ -194,6 +194,33 @@ const translations = {
     de: "Temporäres Passwort",
     en: "Temporary password",
   },
+  "admin.modal.phone": { de: "Telefonnummer", en: "Phone number" },
+  "admin.modal.firstName": { de: "Vorname", en: "First name" },
+  "admin.modal.lastName": { de: "Nachname", en: "Last name" },
+  "admin.modal.street": { de: "Strasse", en: "Street" },
+  "admin.modal.city": { de: "Stadt", en: "City" },
+  "admin.modal.zipCode": { de: "PLZ", en: "Zip code" },
+  "admin.modal.assignedRm": {
+    de: "Relationship Manager",
+    en: "Relationship Manager",
+  },
+  "admin.modal.profileImage": { de: "Profilbild", en: "Profile image" },
+  "admin.modal.fieldRequired": {
+    de: "Dieses Feld ist erforderlich.",
+    en: "This field is required.",
+  },
+  "admin.modal.image.invalidType": {
+    de: "Bitte JPEG, PNG oder WebP verwenden.",
+    en: "Please use JPEG, PNG, or WebP.",
+  },
+  "admin.modal.image.tooLarge": {
+    de: "Bild ist zu gross (max. 100 MB).",
+    en: "Image is too large (max 100 MB).",
+  },
+  "admin.modal.image.uploadFailed": {
+    de: "Hochladen fehlgeschlagen. Bitte erneut versuchen.",
+    en: "Upload failed. Please try again.",
+  },
   "admin.modal.cancel": { de: "Abbrechen", en: "Cancel" },
   "admin.modal.submit": { de: "Erstellen", en: "Create" },
   "admin.created": {

@@ -529,105 +529,141 @@ export default function DocumentsPage() {
           >
             {t("docs.rm.headline")}
           </span>
-          {/* Placeholder RM — no real relationship-manager assignment exists
-              in the backend yet. Mirrors the design portal's demo RM-A entry. */}
-          <div className="flex items-start" style={{ gap: "16px" }}>
-            <div
+          {user?.rm ? (
+            <div className="flex items-start" style={{ gap: "16px" }}>
+              {user.rm.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- presigned S3 URL, next/image can't proxy this
+                <img
+                  src={user.rm.imageUrl}
+                  alt={`${user.rm.firstName ?? ""} ${user.rm.lastName ?? ""}`.trim()}
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--tellian-purple)",
+                    color: "var(--tellian-bg)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    fontSize: "18px",
+                    fontWeight: 500,
+                    letterSpacing: "0.05em",
+                    flexShrink: 0,
+                  }}
+                >
+                  {(user.rm.firstName?.[0] ?? "") + (user.rm.lastName?.[0] ?? "")}
+                </div>
+              )}
+              <div>
+                <span
+                  style={{
+                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: "var(--tellian-dark)",
+                    display: "block",
+                  }}
+                >
+                  {`${user.rm.firstName ?? ""} ${user.rm.lastName ?? ""}`.trim()}
+                </span>
+                {user.rm.email && (
+                  <a
+                    href={`mailto:${user.rm.email}`}
+                    style={{
+                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                      fontSize: "13px",
+                      color: "var(--tellian-stone)",
+                      textDecoration: "none",
+                      display: "block",
+                      marginTop: "4px",
+                    }}
+                  >
+                    {user.rm.email}
+                  </a>
+                )}
+                {user.rm.phone && (
+                  <a
+                    href={`tel:${user.rm.phone.replace(/\s/g, "")}`}
+                    style={{
+                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                      fontSize: "13px",
+                      color: "var(--tellian-stone)",
+                      textDecoration: "none",
+                      display: "block",
+                      marginTop: "2px",
+                    }}
+                  >
+                    {user.rm.phone}
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : (
+            <span
               style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                backgroundColor: "var(--tellian-purple)",
-                color: "var(--tellian-bg)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "18px",
-                fontWeight: 500,
-                letterSpacing: "0.05em",
-                flexShrink: 0,
+                fontSize: "13px",
+                color: "var(--tellian-stone)",
+                fontStyle: "italic",
               }}
             >
-              RA
-            </div>
-            <div>
-              <span
-                style={{
-                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: "var(--tellian-dark)",
-                  display: "block",
-                }}
-              >
-                RM Platzhalter A
-              </span>
-              <a
-                href="mailto:rm.a@telliancapital.ch"
-                style={{
-                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                  fontSize: "13px",
-                  color: "var(--tellian-stone)",
-                  textDecoration: "none",
-                  display: "block",
-                  marginTop: "4px",
-                }}
-              >
-                rm.a@telliancapital.ch
-              </a>
-              <a
-                href="tel:+41442244001"
-                style={{
-                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                  fontSize: "13px",
-                  color: "var(--tellian-stone)",
-                  textDecoration: "none",
-                  display: "block",
-                  marginTop: "2px",
-                }}
-              >
-                +41 44 224 40 01
-              </a>
-            </div>
-          </div>
+              {t("docs.rm.noRm")}
+            </span>
+          )}
         </div>
 
-        {/* Placeholder address — no postal-address field exists in the
-            backend yet. Mirrors the design portal's demo client address. */}
-        <div
-          style={{
-            padding: "16px 24px",
-            borderLeft: "2px solid var(--tellian-line)",
-            marginTop: "24px",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "10px",
-              fontWeight: 500,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "var(--tellian-stone)",
-              display: "block",
-              marginBottom: "10px",
-            }}
-          >
-            {t("docs.profile.address")}
-          </span>
+        {(user?.street || user?.city || user?.zipCode) && (
           <div
             style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
-              color: "var(--tellian-dark)",
-              lineHeight: 1.5,
+              padding: "16px 24px",
+              borderLeft: "2px solid var(--tellian-line)",
+              marginTop: "24px",
             }}
           >
-            <span style={{ display: "block" }}>Musterstrasse 1</span>
-            <span style={{ display: "block" }}>8001 Zürich</span>
+            <span
+              style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "10px",
+                fontWeight: 500,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: "var(--tellian-stone)",
+                display: "block",
+                marginBottom: "10px",
+              }}
+            >
+              {t("docs.profile.address")}
+            </span>
+            <div
+              style={{
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "13px",
+                color: "var(--tellian-dark)",
+                lineHeight: 1.5,
+              }}
+            >
+              {user.street && (
+                <span style={{ display: "block" }}>{user.street}</span>
+              )}
+              {(user.zipCode || user.city) && (
+                <span style={{ display: "block" }}>
+                  {[user.zipCode, user.city].filter(Boolean).join(" ")}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           className="flex items-center"
