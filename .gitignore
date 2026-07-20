@@ -46,3 +46,4 @@ node_modules
 .claude
 .agents
 .codex
+scripts/

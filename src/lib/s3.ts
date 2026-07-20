@@ -1,13 +1,16 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import {
   GetObjectCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client,
   type _Object,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getRegion } from "./cognito";
+import { isAllowedImageContentType } from "./uploadLimits";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -34,6 +37,12 @@ export function getS3Client(): S3Client {
   const secretAccessKey = optional("AWS_SECRET_ACCESS_KEY");
   _client = new S3Client({
     region,
+    // Presigned PUT URLs can't include a body-based checksum (the SDK
+    // doesn't have the file yet at sign time), so leave checksums opt-in
+    // rather than the v3 default of auto-attaching one — otherwise the
+    // signed URL requires a checksum the browser's raw PUT never sends,
+    // and S3 rejects the upload with a signature mismatch (403).
+    requestChecksumCalculation: "WHEN_REQUIRED",
     credentials:
       accessKeyId && secretAccessKey
         ? { accessKeyId, secretAccessKey }
@@ -90,4 +99,35 @@ export function presignDownload(key: string, expiresIn = 900): Promise<string> {
     new GetObjectCommand({ Bucket: getBucketName(), Key: key }),
     { expiresIn },
   );
+}
+
+export function presignUpload(
+  key: string,
+  contentType: string,
+  expiresIn = 1800,
+): Promise<string> {
+  const client = getS3Client();
+  return getSignedUrl(
+    client,
+    new PutObjectCommand({
+      Bucket: getBucketName(),
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn },
+  );
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+export function buildProfileImageKey(contentType: string): string {
+  if (!isAllowedImageContentType(contentType)) {
+    throw new Error(`Unsupported image content type: ${contentType}`);
+  }
+  const ext = IMAGE_EXTENSIONS[contentType];
+  return `profile-images/${randomUUID()}.${ext}`;
 }

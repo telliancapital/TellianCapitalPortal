@@ -9,12 +9,28 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 
+export interface AuthUserRm {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  imageUrl: string | null;
+}
+
 export interface AuthUser {
   username: string;
   sub: string;
   groups: string[];
   isAdmin: boolean;
   impersonatedBy: string | null;
+  phoneNumber?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+  street?: string | null;
+  city?: string | null;
+  zipCode?: string | null;
+  rm?: AuthUserRm | null;
 }
 
 interface AuthContextValue {
@@ -42,6 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           groups: data.groups,
           isAdmin: data.isAdmin,
           impersonatedBy: data.impersonatedBy ?? null,
+          phoneNumber: data.phoneNumber ?? null,
+          firstName: data.firstName ?? null,
+          lastName: data.lastName ?? null,
+          profileImageUrl: data.profileImageUrl ?? null,
+          street: data.street ?? null,
+          city: data.city ?? null,
+          zipCode: data.zipCode ?? null,
+          rm: data.rm ?? null,
         });
       } else {
         setUser(null);
