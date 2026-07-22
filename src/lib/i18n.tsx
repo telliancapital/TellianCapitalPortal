@@ -170,7 +170,8 @@ const translations = {
     en: "Manage clients, employees and administrators.",
   },
   "admin.create": { de: "Benutzer erstellen", en: "Create user" },
-  "admin.col.username": { de: "Kunden-ID", en: "Customer ID" },
+  "admin.col.id": { de: "ID", en: "ID" },
+  "admin.col.name": { de: "Name", en: "Name" },
   "admin.col.role": { de: "Rolle", en: "Role" },
   "admin.col.status": { de: "Status", en: "Status" },
   "admin.col.mfa": { de: "MFA", en: "MFA" },
@@ -182,9 +183,14 @@ const translations = {
   "admin.action.disable": { de: "Deaktivieren", en: "Disable" },
   "admin.action.enable": { de: "Aktivieren", en: "Enable" },
   "admin.action.changeRole": { de: "Rolle ändern", en: "Change role" },
+  "admin.action.edit": { de: "Bearbeiten", en: "Edit" },
   "admin.modal.title": {
     de: "Neuen Benutzer erstellen",
     en: "Create new user",
+  },
+  "admin.modal.editTitle": {
+    de: "Benutzer bearbeiten",
+    en: "Edit user",
   },
   "admin.modal.customerId": { de: "Kunden-ID", en: "Customer ID" },
   "admin.modal.userId": { de: "Benutzer-ID", en: "User ID" },
@@ -223,6 +229,7 @@ const translations = {
   },
   "admin.modal.cancel": { de: "Abbrechen", en: "Cancel" },
   "admin.modal.submit": { de: "Erstellen", en: "Create" },
+  "admin.modal.save": { de: "Speichern", en: "Save" },
   "admin.created": {
     de: "Benutzer erstellt. Temporäres Passwort:",
     en: "User created. Temporary password:",
@@ -234,6 +241,14 @@ const translations = {
   "admin.toast.createFailed.fallback": {
     de: "Unerwarteter Fehler beim Erstellen des Benutzers.",
     en: "An unexpected error occurred while creating the user.",
+  },
+  "admin.toast.updated.title": {
+    de: "Benutzer erfolgreich aktualisiert",
+    en: "User updated successfully",
+  },
+  "admin.toast.updateFailed.fallback": {
+    de: "Unerwarteter Fehler beim Aktualisieren des Benutzers.",
+    en: "An unexpected error occurred while updating the user.",
   },
   "admin.toast.usernameLabel": {
     de: "Benutzername",
@@ -261,6 +276,11 @@ const translations = {
     de: "Benutzer suchen...",
     en: "Search users...",
   },
+  "admin.filter.role.label": {
+    de: "Nach Rolle filtern",
+    en: "Filter by role",
+  },
+  "admin.filter.role.all": { de: "Alle Rollen", en: "All roles" },
   "admin.pagination.info": {
     de: "Seite {current} von {total}",
     en: "Page {current} of {total}",

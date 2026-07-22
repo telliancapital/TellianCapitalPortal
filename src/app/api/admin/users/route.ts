@@ -28,6 +28,13 @@ export async function GET() {
         let mfaEnabled = false;
         let firstName: string | undefined;
         let lastName: string | undefined;
+        let email: string | undefined;
+        let phoneNumber: string | undefined;
+        let profileImageKey: string | undefined;
+        let street: string | undefined;
+        let city: string | undefined;
+        let zipCode: string | undefined;
+        let assignedRm: string | undefined;
 
         try {
           const [groupsData, userData] = await Promise.all([
@@ -65,6 +72,27 @@ export async function GET() {
           lastName = userData.UserAttributes?.find(
             (a) => a.Name === "custom:lastName",
           )?.Value;
+          email = userData.UserAttributes?.find(
+            (a) => a.Name === "email",
+          )?.Value;
+          phoneNumber = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:phoneNumber",
+          )?.Value;
+          profileImageKey = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:profileImageKey",
+          )?.Value;
+          street = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:street",
+          )?.Value;
+          city = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:city",
+          )?.Value;
+          zipCode = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:zipCode",
+          )?.Value;
+          assignedRm = userData.UserAttributes?.find(
+            (a) => a.Name === "custom:assignedRm",
+          )?.Value;
         } catch (err) {
           console.warn(
             `Failed to fetch extra details for user ${username}`,
@@ -81,6 +109,13 @@ export async function GET() {
           mfaEnabled,
           firstName,
           lastName,
+          email,
+          phoneNumber,
+          profileImageKey,
+          street,
+          city,
+          zipCode,
+          assignedRm,
         };
       }),
     );
