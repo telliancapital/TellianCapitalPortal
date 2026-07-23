@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronLeft, ChevronRight, Copy, Loader2, Search, Shield, ShieldCheck, UserPlus, X, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Copy, Loader2, Search, Shield, ShieldCheck, UserPlus, X, XCircle } from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { FloatingField } from "@/components/FloatingField";
@@ -21,6 +21,27 @@ interface AdminUser {
   mfaEnabled: boolean;
   firstName?: string;
   lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  profileImageKey?: string;
+  street?: string;
+  city?: string;
+  zipCode?: string;
+  assignedRm?: string;
+  createdAt?: string;
+}
+
+function getDisplayName(u: AdminUser): string {
+  const full = [u.firstName, u.lastName].filter(Boolean).join(" ");
+  return full || "—";
+}
+
+function getDisplayId(u: AdminUser): string {
+  const role = (u.groups[0] ?? "User") as Role;
+  if (role === "Admin" || role === "InternalEmployee") {
+    return u.email ?? "—";
+  }
+  return u.username;
 }
 
 export default function AdminPage() {
@@ -31,8 +52,10 @@ export default function AdminPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [createdNotice, setCreatedNotice] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -60,7 +83,12 @@ export default function AdminPage() {
         return;
       }
       const data = (await res.json()) as { users: AdminUser[] };
-      setUsers(data.users);
+      const sorted = [...data.users].sort((a, b) => {
+        const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
+        const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
+        return bTime - aTime;
+      });
+      setUsers(sorted);
     } catch {
       setError("Failed to load");
     } finally {
@@ -72,9 +100,17 @@ export default function AdminPage() {
     if (canViewUsers) void loadUsers();
   }, [canViewUsers, loadUsers]);
 
-  const filteredUsers = users.filter((u) =>
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredUsers = users.filter((u) => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      u.username.toLowerCase().includes(term) ||
+      getDisplayName(u).toLowerCase().includes(term) ||
+      (u.email ?? "").toLowerCase().includes(term);
+    const role = (u.groups[0] ?? "User") as Role;
+    const matchesRole =
+      selectedRoles.length === 0 || selectedRoles.includes(role);
+    return matchesSearch && matchesRole;
+  });
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize);
   const paginatedUsers = filteredUsers.slice(
@@ -84,7 +120,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, selectedRoles]);
 
   if (loading || !user || !canViewUsers) {
     return (
@@ -242,42 +278,53 @@ export default function AdminPage() {
           )}
         </div>
 
-        <div style={{ marginTop: "24px", maxWidth: "400px", position: "relative" }}>
-          <Search
-            size={16}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--tellian-stone)",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            type="search"
-            placeholder={t("admin.search.placeholder") ?? "Search users..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              backgroundColor: "transparent",
-              border: "none",
-              borderBottom: "1.5px solid var(--tellian-line)",
-              borderRadius: 0,
-              padding: "10px 0 10px 28px",
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "14px",
-              color: "var(--tellian-dark)",
-              outline: "none",
-              transition: "border-color 200ms ease",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
-            }
+        <div
+          className="flex items-end flex-wrap"
+          style={{ marginTop: "24px", gap: "24px" }}
+        >
+          <div style={{ maxWidth: "400px", flex: "1 1 280px", position: "relative" }}>
+            <Search
+              size={16}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--tellian-stone)",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              type="search"
+              placeholder={t("admin.search.placeholder") ?? "Search users..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: "100%",
+                backgroundColor: "transparent",
+                border: "none",
+                borderBottom: "1.5px solid var(--tellian-line)",
+                borderRadius: 0,
+                padding: "10px 0 10px 28px",
+                fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                fontSize: "14px",
+                color: "var(--tellian-dark)",
+                outline: "none",
+                transition: "border-color 200ms ease",
+              }}
+              onFocus={(e) =>
+                (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
+              }
+              onBlur={(e) =>
+                (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
+              }
+            />
+          </div>
+
+          <RoleFilterDropdown
+            selectedRoles={selectedRoles}
+            onChange={setSelectedRoles}
+            t={t}
           />
         </div>
       </div>
@@ -314,8 +361,8 @@ export default function AdminPage() {
           className="hidden md:grid md:items-center"
           style={{
             gridTemplateColumns: showActionsColumn
-              ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
-              : "minmax(0, 2.2fr) 140px 110px 100px",
+              ? "minmax(0, 1.4fr) minmax(0, 1.8fr) 140px 110px 100px minmax(360px, 2.6fr)"
+              : "minmax(0, 1.4fr) minmax(0, 1.8fr) 140px 110px 100px",
             gap: "24px",
             padding: "12px 0",
             borderBottom: "1.5px solid var(--tellian-dark)",
@@ -327,7 +374,8 @@ export default function AdminPage() {
             color: "var(--tellian-stone)",
           }}
         >
-          <span style={headerCell}>{t("admin.col.username")}</span>
+          <span style={headerCell}>{t("admin.col.id")}</span>
+          <span style={headerCell}>{t("admin.col.name")}</span>
           <span style={headerCell}>{t("admin.col.role")}</span>
           <span style={headerCell}>{t("admin.col.status")}</span>
           <span style={headerCell}>{t("admin.col.mfa")}</span>
@@ -354,6 +402,7 @@ export default function AdminPage() {
               onToggleMfa={() => handleToggleMfa(u)}
               onImpersonate={() => handleImpersonate(u)}
               onResetPassword={() => handleResetPassword(u)}
+              onEdit={() => setEditingUser(u)}
               isSelf={u.username === user.username}
               canManage={canManageUsers}
               canImpersonate={canImpersonateUsers}
@@ -419,10 +468,18 @@ export default function AdminPage() {
         </div>
       )}
 
-      {showCreate && (
+      {(showCreate || editingUser) && (
         <CreateUserModal
-          onClose={() => setShowCreate(false)}
+          editUser={editingUser}
+          onClose={() => {
+            setShowCreate(false);
+            setEditingUser(null);
+          }}
           onCreated={() => {
+            setCurrentPage(1);
+            void loadUsers();
+          }}
+          onUpdated={() => {
             void loadUsers();
           }}
           t={t}
@@ -434,6 +491,131 @@ export default function AdminPage() {
   );
 }
 
+function RoleFilterDropdown({
+  selectedRoles,
+  onChange,
+  t,
+}: {
+  selectedRoles: Role[];
+  onChange: (roles: Role[]) => void;
+  t: (key: any) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  function toggleRole(role: Role) {
+    onChange(
+      selectedRoles.includes(role)
+        ? selectedRoles.filter((r) => r !== role)
+        : [...selectedRoles, role],
+    );
+  }
+
+  const label =
+    selectedRoles.length === 0
+      ? (t("admin.filter.role.all") ?? "All roles")
+      : selectedRoles.join(", ");
+
+  return (
+    <div ref={containerRef} style={{ position: "relative", minWidth: "200px" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          backgroundColor: "transparent",
+          border: "none",
+          borderBottom: "1.5px solid var(--tellian-line)",
+          borderRadius: 0,
+          padding: "10px 24px 10px 0",
+          fontFamily: "var(--font-inter), 'Inter', sans-serif",
+          fontSize: "14px",
+          color: "var(--tellian-dark)",
+          textAlign: "left",
+          cursor: "pointer",
+          position: "relative",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+        <ChevronDown
+          size={16}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "50%",
+            transform: open ? "translateY(-50%) rotate(180deg)" : "translateY(-50%)",
+            color: "var(--tellian-stone)",
+            transition: "transform 150ms ease",
+            pointerEvents: "none",
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-multiselectable="true"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 20,
+            minWidth: "100%",
+            backgroundColor: "var(--tellian-cream, #fff)",
+            border: "1px solid var(--tellian-line)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+          }}
+        >
+          {ROLES.map((role) => {
+            const checked = selectedRoles.includes(role);
+            return (
+              <label
+                key={role}
+                role="option"
+                aria-selected={checked}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 14px",
+                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
+                  fontSize: "13px",
+                  color: "var(--tellian-dark)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleRole(role)}
+                  style={{ cursor: "pointer" }}
+                />
+                {role}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserRow({
   user,
   onChangeRole,
@@ -441,6 +623,7 @@ function UserRow({
   onToggleMfa,
   onImpersonate,
   onResetPassword,
+  onEdit,
   isSelf,
   canManage,
   canImpersonate,
@@ -452,6 +635,7 @@ function UserRow({
   onToggleMfa: () => void;
   onImpersonate: () => void;
   onResetPassword: () => void;
+  onEdit: () => void;
   isSelf: boolean;
   canManage: boolean;
   canImpersonate: boolean;
@@ -468,8 +652,8 @@ function UserRow({
       className="md:grid md:items-center"
       style={{
         gridTemplateColumns: showActions
-          ? "minmax(0, 2.2fr) 140px 110px 100px minmax(360px, 2.6fr)"
-          : "minmax(0, 2.2fr) 140px 110px 100px",
+          ? "minmax(0, 1.4fr) minmax(0, 1.8fr) 140px 110px 100px minmax(360px, 2.6fr)"
+          : "minmax(0, 1.4fr) minmax(0, 1.8fr) 140px 110px 100px",
         padding: "14px 0",
         borderBottom: "1px solid var(--tellian-line)",
         gap: "24px",
@@ -484,7 +668,7 @@ function UserRow({
           color: "var(--tellian-dark)",
           overflow: "hidden",
         }}
-        title={user.username}
+        title={getDisplayId(user)}
       >
         <span
           style={{
@@ -495,7 +679,29 @@ function UserRow({
             width: "100%",
           }}
         >
-          {user.username}
+          {getDisplayId(user)}
+        </span>
+      </div>
+
+      <div
+        style={{
+          ...rowCell,
+          fontSize: "13px",
+          color: "var(--tellian-dark)",
+          overflow: "hidden",
+        }}
+        title={getDisplayName(user)}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            display: "block",
+            width: "100%",
+          }}
+        >
+          {getDisplayName(user)}
         </span>
       </div>
 
@@ -545,6 +751,11 @@ function UserRow({
 
       {showActions && (
         <div className="mt-3 md:mt-0 flex flex-wrap gap-1 items-center" style={{ minWidth: 0 }}>
+          {canManage && (
+            <button onClick={onEdit} style={actionBtnStyle()}>
+              {t("admin.action.edit")}
+            </button>
+          )}
           {canManage && (
             <button
               onClick={onToggle}
@@ -650,27 +861,36 @@ function MfaBadge({
 function CreateUserModal({
   onClose,
   onCreated,
+  onUpdated,
+  editUser,
   t,
   users,
 }: {
   onClose: () => void;
   onCreated: () => void;
+  onUpdated: () => void;
+  editUser?: AdminUser | null;
   t: (key: any) => string;
   users: AdminUser[];
 }) {
+  const isEdit = Boolean(editUser);
   const toast = useToast();
-  const [customerId, setCustomerId] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("User");
+  const [customerId, setCustomerId] = useState(editUser?.username ?? "");
+  const [email, setEmail] = useState(editUser?.email ?? "");
+  const [role, setRole] = useState<Role>(
+    (editUser?.groups[0] as Role) ?? "User",
+  );
   const [tempPassword, setTempPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [profileImageKey, setProfileImageKey] = useState<string | null>(null);
-  const [street, setStreet] = useState("");
-  const [city, setCity] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [assignedRm, setAssignedRm] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(editUser?.phoneNumber ?? "");
+  const [firstName, setFirstName] = useState(editUser?.firstName ?? "");
+  const [lastName, setLastName] = useState(editUser?.lastName ?? "");
+  const [profileImageKey, setProfileImageKey] = useState<string | null>(
+    editUser?.profileImageKey ?? null,
+  );
+  const [street, setStreet] = useState(editUser?.street ?? "");
+  const [city, setCity] = useState(editUser?.city ?? "");
+  const [zipCode, setZipCode] = useState(editUser?.zipCode ?? "");
+  const [assignedRm, setAssignedRm] = useState(editUser?.assignedRm ?? "");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -711,6 +931,58 @@ function CreateUserModal({
     setSubmitting(true);
     setError(null);
     try {
+      if (isEdit && editUser) {
+        const payload: {
+          username: string;
+          email?: string;
+          phoneNumber: string;
+          firstName: string;
+          lastName: string;
+          profileImageKey: string | null;
+          street?: string;
+          city?: string;
+          zipCode?: string;
+          assignedRm?: string;
+        } = {
+          username: editUser.username,
+          phoneNumber: phoneNumber.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          profileImageKey,
+        };
+        if (isStaff) {
+          payload.email = email.trim();
+        } else {
+          payload.street = street.trim();
+          payload.city = city.trim();
+          payload.zipCode = zipCode.trim();
+          payload.assignedRm = assignedRm;
+        }
+
+        const res = await fetch("/api/admin/update-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!res.ok) {
+          const message =
+            data.error?.trim() || t("admin.toast.updateFailed.fallback");
+          setError(message);
+          toast.error(message);
+          setSubmitting(false);
+          return;
+        }
+
+        toast.success(t("admin.toast.updated.title"));
+        setSubmitting(false);
+        onUpdated();
+        onClose();
+        return;
+      }
+
       const payload: {
         role: Role;
         temporaryPassword?: string;
@@ -820,7 +1092,11 @@ function CreateUserModal({
               lineHeight: 1.2,
             }}
           >
-            {result ? t("admin.toast.created.title") : t("admin.modal.title")}
+            {result
+              ? t("admin.toast.created.title")
+              : isEdit
+                ? t("admin.modal.editTitle")
+                : t("admin.modal.title")}
           </h2>
           <button
             onClick={onClose}
@@ -845,7 +1121,12 @@ function CreateUserModal({
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
-              style={modalInput}
+              disabled={isEdit}
+              style={{
+                ...modalInput,
+                cursor: isEdit ? "not-allowed" : "pointer",
+                opacity: isEdit ? 0.6 : 1,
+              }}
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -931,6 +1212,7 @@ function CreateUserModal({
                   value={customerId}
                   onChange={setCustomerId}
                   error={fieldErrors.customerId}
+                  disabled={isEdit}
                 />
               </div>
               <div style={{ marginTop: "20px" }}>
@@ -1001,14 +1283,16 @@ function CreateUserModal({
               </div>
             </>
           )}
-          <div style={{ marginTop: "20px" }}>
-            <FloatingField
-              id="modal-tempPassword"
-              label={t("admin.modal.tempPassword")}
-              value={tempPassword}
-              onChange={setTempPassword}
-            />
-          </div>
+          {!isEdit && (
+            <div style={{ marginTop: "20px" }}>
+              <FloatingField
+                id="modal-tempPassword"
+                label={t("admin.modal.tempPassword")}
+                value={tempPassword}
+                onChange={setTempPassword}
+              />
+            </div>
+          )}
 
           {error && (
             <p
@@ -1066,7 +1350,7 @@ function CreateUserModal({
                 gap: "8px",
               }}
             >
-              {t("admin.modal.submit")}
+              {isEdit ? t("admin.modal.save") : t("admin.modal.submit")}
               {submitting && <Loader2 size={14} className="animate-spin" />}
             </button>
           </div>
