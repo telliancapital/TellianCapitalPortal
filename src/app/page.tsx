@@ -2,18 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowDownToLine,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Loader2,
-  Search,
-} from "lucide-react";
 import { PortalLayout } from "@/components/PortalLayout";
 import { useAuth } from "@/lib/auth";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Locale } from "@/lib/i18n";
+import { C, LABEL, sans, serif, selectChevron } from "@/lib/tokens";
+import { DURATION } from "@/lib/motion";
+
+/* ═══════════════════════════════════════════════════════════
+   CLIENT DASHBOARD — "Ihre Dokumente"
+   Layout mirrors the design portal ClientDashboard; data comes
+   from /api/documents (presigned S3 download URLs).
+   ═══════════════════════════════════════════════════════════ */
 
 const PAGE_SIZE = 10;
 const FETCH_BATCH = 200;
@@ -68,13 +67,33 @@ function extractDateFromFilename(filename: string): string | null {
   return null;
 }
 
-function formatDate(iso: string | null, locale: string): string {
+function formatDate(iso: string | null, locale: Locale): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(locale === "de" ? "de-CH" : "en-GB", {
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
+}
+
+function DownloadIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
 }
 
 export default function DocumentsPage() {
@@ -214,606 +233,465 @@ export default function DocumentsPage() {
     });
   }
 
+  const rm = user?.rm ?? null;
+  const rmName = rm ? `${rm.firstName ?? ""} ${rm.lastName ?? ""}`.trim() : "";
+  const rmInitials = rm
+    ? `${rm.firstName?.[0] ?? ""}${rm.lastName?.[0] ?? ""}`.toUpperCase()
+    : "";
+
   return (
-    <PortalLayout sectionLabel={t("portal.nav.reports")}>
+    <PortalLayout variant="client">
       <div
-        className="flex flex-col lg:grid lg:grid-cols-[1fr_320px] lg:items-start"
-        style={{
-          maxWidth: "1200px",
-          paddingTop: "clamp(32px, 5vw, 48px)",
-          paddingBottom: "48px",
-          gap: "clamp(32px, 4vw, 64px)",
-        }}
+        className="w-full flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start gap-10 lg:gap-[clamp(32px,4vw,64px)] px-5 pt-8 pb-12 md:px-[clamp(32px,4vw,64px)] md:pt-12 md:pb-16"
+        style={{ maxWidth: 1200, margin: "0 auto", boxSizing: "border-box" }}
       >
-      <div>
-        <p
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "14px",
-            color: "var(--tellian-stone)",
-            margin: "0 0 8px 0",
-          }}
-        >
-          {t("docs.greeting", { name: user?.username ?? "—" })}
-        </p>
-        <h1
-          style={{
-            fontFamily: "var(--font-lustria), 'Lustria', serif",
-            fontSize: "clamp(24px, 4vw, 40px)",
-            fontWeight: 400,
-            color: "var(--tellian-dark)",
-            letterSpacing: "-0.02em",
-            lineHeight: 1.1,
-            margin: 0,
-          }}
-        >
-          <em style={{ fontStyle: "italic", fontWeight: 400 }}>
-            {t("docs.headline")}
-          </em>
-        </h1>
-        {!initialLoading && (
-          <p
+        {/* ── LEFT: Documents ── */}
+        <div style={{ minWidth: 0 }}>
+          <h1
+            className="text-[clamp(28px,8vw,34px)] md:text-[clamp(32px,3vw,40px)]"
             style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "13px",
+              fontFamily: serif,
+              lineHeight: 1.1,
+              color: C.dark,
+              letterSpacing: "-0.02em",
               fontWeight: 400,
-              color: "var(--tellian-stone)",
-              marginTop: "8px",
-              marginBottom: 0,
+              margin: 0,
             }}
           >
-            {t("docs.count", { n: sortedDocuments.length })}
-          </p>
-        )}
-
-        <div
-          className="flex flex-wrap items-end gap-4"
-          style={{ marginTop: "28px" }}
-        >
-          <div
-            style={{
-              flex: "1 1 180px",
-              minWidth: "180px",
-              position: "relative",
-            }}
-          >
-            <Search
-              size={16}
-              style={{
-                position: "absolute",
-                left: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--tellian-stone)",
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              type="search"
-              placeholder={t("docs.search.placeholder")}
-              value={searchTerm}
-              onChange={(e) => updateSearch(e.target.value)}
-              style={{
-                width: "100%",
-                backgroundColor: "transparent",
-                border: "none",
-                borderBottom: "1.5px solid var(--tellian-line)",
-                borderRadius: 0,
-                padding: "10px 0 10px 28px",
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "14px",
-                color: "var(--tellian-dark)",
-                outline: "none",
-                transition: "border-color 200ms ease",
-              }}
-              onFocus={(e) =>
-                (e.currentTarget.style.borderBottomColor = "var(--tellian-dark)")
-              }
-              onBlur={(e) =>
-                (e.currentTarget.style.borderBottomColor = "var(--tellian-line)")
-              }
-            />
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <label
-              htmlFor="sort-select"
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "10px",
-                fontWeight: 500,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: "var(--tellian-stone)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t("docs.sort.label")}
-            </label>
-            <select
-              id="sort-select"
-              value={sortKey}
-              onChange={(e) => updateSort(e.target.value as SortKey)}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--tellian-line)",
-                borderRadius: "2px",
-                padding: "6px 28px 6px 8px",
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "13px",
-                color: "var(--tellian-dark)",
-                cursor: "pointer",
-                outline: "none",
-                minHeight: "36px",
-              }}
-            >
-              <option value="newest">{t("docs.sort.newest")}</option>
-              <option value="oldest">{t("docs.sort.oldest")}</option>
-              <option value="titleAsc">{t("docs.sort.titleAsc")}</option>
-              <option value="titleDesc">{t("docs.sort.titleDesc")}</option>
-            </select>
-          </div>
-        </div>
-
-      {initialLoading ? (
-        <div style={{ padding: "96px 0" }} className="flex justify-center">
-          <Loader2 className="animate-spin" />
-        </div>
-      ) : sortedDocuments.length > 0 ? (
-        <>
-          <div style={{ marginTop: "24px" }}>
-            <div
-              className="hidden lg:grid"
-              style={{
-                gridTemplateColumns: "1fr 120px 120px 140px",
-                gap: "16px",
-                padding: "12px 0",
-                borderBottom: "1.5px solid var(--tellian-dark)",
-              }}
-            >
-              {[t("docs.col.title"), t("docs.col.date"), t("docs.col.format"), ""].map(
-                (h, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                      color: "var(--tellian-stone)",
-                    }}
-                  >
-                    {h}
-                  </span>
-                ),
-              )}
-            </div>
-            {isAdmin && groupedByCustomer
-              ? groupedByCustomer.map(({ customerId, docs }) => (
-                  <CustomerGroup
-                    key={customerId}
-                    customerId={customerId}
-                    docs={docs}
-                    locale={locale}
-                    isOpen={expanded.has(customerId)}
-                    onToggle={() => toggleExpanded(customerId)}
-                    t={t}
-                  />
-                ))
-              : paginatedDocuments.map((doc) => (
-                  <DocumentRow
-                    key={doc.id}
-                    doc={doc}
-                    locale={locale}
-                    isAdmin={false}
-                    t={t}
-                  />
-                ))}
-          </div>
-
-          {error && (
+            <em style={{ fontStyle: "italic", fontWeight: 400 }}>{t("docs.headline")}</em>
+          </h1>
+          {!initialLoading && !error && (
             <p
-              role="alert"
               style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                color: "var(--tellian-charcoal)",
-                padding: "16px 0 0",
-              }}
-            >
-              {error}
-            </p>
-          )}
-
-          {!isAdmin && totalPages > 1 && (
-            <div
-              className="flex items-center justify-between"
-              style={{
-                marginTop: "32px",
-                marginBottom: "48px",
-                paddingTop: "24px",
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              }}
-            >
-              <div style={{ fontSize: "13px", color: "var(--tellian-stone)" }}>
-                {t("docs.pagination.info", {
-                  current: safePage,
-                  total: totalPages,
-                })}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
-                  disabled={safePage === 1}
-                  aria-label="Previous page"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "40px",
-                    height: "40px",
-                    border: "1px solid var(--tellian-line)",
-                    background: "transparent",
-                    color: "var(--tellian-dark)",
-                    cursor: safePage === 1 ? "not-allowed" : "pointer",
-                    opacity: safePage === 1 ? 0.3 : 1,
-                  }}
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage(Math.min(totalPages, safePage + 1))
-                  }
-                  disabled={safePage === totalPages}
-                  aria-label="Next page"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "40px",
-                    height: "40px",
-                    border: "1px solid var(--tellian-line)",
-                    background: "transparent",
-                    color: "var(--tellian-dark)",
-                    cursor:
-                      safePage === totalPages ? "not-allowed" : "pointer",
-                    opacity: safePage === totalPages ? 0.3 : 1,
-                  }}
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      ) : error ? (
-        <p
-          role="alert"
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            color: "var(--tellian-charcoal)",
-            padding: "24px 0",
-          }}
-        >
-          {error}
-        </p>
-      ) : searchTerm ? (
-        <EmptySearchState t={t} />
-      ) : (
-        <EmptyState t={t} />
-      )}
-      </div>
-
-      <aside>
-        <div
-          style={{
-            padding: "24px",
-            backgroundColor: "var(--tellian-bg-secondary)",
-            borderRadius: "8px",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "10px",
-              fontWeight: 500,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "var(--tellian-stone)",
-              display: "block",
-              marginBottom: "16px",
-            }}
-          >
-            {t("docs.rm.headline")}
-          </span>
-          {user?.rm ? (
-            <div className="flex items-start" style={{ gap: "16px" }}>
-              {user.rm.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- presigned S3 URL, next/image can't proxy this
-                <img
-                  src={user.rm.imageUrl}
-                  alt={`${user.rm.firstName ?? ""} ${user.rm.lastName ?? ""}`.trim()}
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    flexShrink: 0,
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "56px",
-                    height: "56px",
-                    borderRadius: "50%",
-                    backgroundColor: "var(--tellian-purple)",
-                    color: "var(--tellian-bg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                    fontSize: "18px",
-                    fontWeight: 500,
-                    letterSpacing: "0.05em",
-                    flexShrink: 0,
-                  }}
-                >
-                  {(user.rm.firstName?.[0] ?? "") + (user.rm.lastName?.[0] ?? "")}
-                </div>
-              )}
-              <div>
-                <span
-                  style={{
-                    fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    color: "var(--tellian-dark)",
-                    display: "block",
-                  }}
-                >
-                  {`${user.rm.firstName ?? ""} ${user.rm.lastName ?? ""}`.trim()}
-                </span>
-                {user.rm.email && (
-                  <a
-                    href={`mailto:${user.rm.email}`}
-                    style={{
-                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                      fontSize: "13px",
-                      color: "var(--tellian-stone)",
-                      textDecoration: "none",
-                      display: "block",
-                      marginTop: "4px",
-                    }}
-                  >
-                    {user.rm.email}
-                  </a>
-                )}
-                {user.rm.phone && (
-                  <a
-                    href={`tel:${user.rm.phone.replace(/\s/g, "")}`}
-                    style={{
-                      fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                      fontSize: "13px",
-                      color: "var(--tellian-stone)",
-                      textDecoration: "none",
-                      display: "block",
-                      marginTop: "2px",
-                    }}
-                  >
-                    {user.rm.phone}
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : (
-            <span
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "13px",
-                color: "var(--tellian-stone)",
-                fontStyle: "italic",
-              }}
-            >
-              {t("docs.rm.noRm")}
-            </span>
-          )}
-        </div>
-
-        {(user?.street || user?.city || user?.zipCode) && (
-          <div
-            style={{
-              padding: "16px 24px",
-              borderLeft: "2px solid var(--tellian-line)",
-              marginTop: "24px",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "10px",
-                fontWeight: 500,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: "var(--tellian-stone)",
-                display: "block",
-                marginBottom: "10px",
-              }}
-            >
-              {t("docs.profile.address")}
-            </span>
-            <div
-              style={{
-                fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                fontSize: "13px",
-                color: "var(--tellian-dark)",
+                fontFamily: sans,
+                fontSize: 13,
+                color: C.stoneText,
+                margin: "10px 0 0 0",
                 lineHeight: 1.5,
               }}
             >
-              {user.street && (
-                <span style={{ display: "block" }}>{user.street}</span>
-              )}
-              {(user.zipCode || user.city) && (
-                <span style={{ display: "block" }}>
-                  {[user.zipCode, user.city].filter(Boolean).join(" ")}
-                </span>
-              )}
+              {documents.length === 1
+                ? t("docs.countOne")
+                : t("docs.count", { n: documents.length })}
+            </p>
+          )}
+
+          {/* Search + Sort row */}
+          <div
+            className="flex flex-wrap md:flex-nowrap items-end"
+            style={{ gap: 16, marginTop: 32 }}
+          >
+            <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: C.stoneText,
+                  pointerEvents: "none",
+                }}
+              >
+                <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => updateSearch(e.target.value)}
+                placeholder={t("docs.search.placeholder")}
+                aria-label={t("docs.search.placeholder")}
+                style={{
+                  fontFamily: sans,
+                  fontSize: 14,
+                  color: C.dark,
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderBottom: `1.5px solid ${C.line}`,
+                  borderRadius: 0,
+                  padding: "10px 0 10px 28px",
+                  outline: "none",
+                  width: "100%",
+                  transition: `border-color ${DURATION.fast}ms ease`,
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderBottomColor = C.dark)}
+                onBlur={(e) => (e.currentTarget.style.borderBottomColor = C.line)}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <label htmlFor="sort-select" style={{ ...LABEL, whiteSpace: "nowrap" }}>
+                {t("docs.sort.label")}
+              </label>
+              <select
+                id="sort-select"
+                value={sortKey}
+                onChange={(e) => updateSort(e.target.value as SortKey)}
+                style={{
+                  fontFamily: sans,
+                  fontSize: 13,
+                  color: C.dark,
+                  backgroundColor: "transparent",
+                  border: `1px solid ${C.line}`,
+                  borderRadius: 2,
+                  padding: "6px 28px 6px 8px",
+                  cursor: "pointer",
+                  outline: "none",
+                  appearance: "none",
+                  minHeight: 40,
+                  backgroundImage: selectChevron("68635A"),
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 8px center",
+                }}
+              >
+                <option value="newest">{t("docs.sort.newest")}</option>
+                <option value="oldest">{t("docs.sort.oldest")}</option>
+                <option value="titleAsc">{t("docs.sort.titleAsc")}</option>
+                <option value="titleDesc">{t("docs.sort.titleDesc")}</option>
+              </select>
             </div>
           </div>
-        )}
 
-        <div
-          className="flex items-center"
-          style={{ gap: "10px", marginTop: "32px" }}
-        >
-          <div
-            style={{
-              width: "16px",
-              height: "1px",
-              backgroundColor: "var(--tellian-line)",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "9px",
-              fontWeight: 500,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "var(--tellian-stone)",
-            }}
-          >
-            {t("login.footer")}
-          </span>
+          {/* ── DOCUMENT LIST — loading / error / empty / loaded ── */}
+          <div style={{ marginTop: 24 }} aria-live="polite">
+            {initialLoading && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "24px 0" }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 56,
+                      borderRadius: 4,
+                      background: `linear-gradient(90deg, ${C.subtle} 25%, ${C.line} 50%, ${C.subtle} 75%)`,
+                      backgroundSize: "200% 100%",
+                      animation: "skeleton-shimmer 1.5s ease infinite",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!initialLoading && error && (
+              <div
+                role="alert"
+                style={{
+                  padding: "32px 24px",
+                  textAlign: "center",
+                  backgroundColor: C.errorBg,
+                  border: `1px solid ${C.error}`,
+                  borderRadius: 4,
+                  marginTop: 8,
+                }}
+              >
+                <span style={{ fontFamily: sans, fontSize: 14, color: C.error }}>
+                  {t("docs.error")}
+                </span>
+              </div>
+            )}
+
+            {!initialLoading && !error && sortedDocuments.length === 0 && (
+              <p
+                style={{
+                  fontFamily: sans,
+                  fontSize: 14,
+                  color: C.stoneText,
+                  fontStyle: "italic",
+                  padding: "48px 0",
+                  textAlign: "center",
+                  margin: 0,
+                }}
+              >
+                {searchTerm ? t("docs.empty.search.headline") : t("docs.empty.headline")}
+              </p>
+            )}
+
+            {!initialLoading && !error && sortedDocuments.length > 0 && (
+              <>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div
+                    className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_120px_44px]"
+                    style={{
+                      gap: 16,
+                      padding: "12px 0",
+                      borderBottom: `1.5px solid ${C.dark}`,
+                    }}
+                  >
+                    <span style={LABEL}>{t("docs.col.title")}</span>
+                    <span style={LABEL}>{t("docs.col.date")}</span>
+                    <span />
+                  </div>
+
+                  {isAdmin && groupedByCustomer
+                    ? groupedByCustomer.map(({ customerId, docs }) => (
+                        <CustomerGroup
+                          key={customerId}
+                          customerId={customerId}
+                          docs={docs}
+                          locale={locale}
+                          isOpen={expanded.has(customerId)}
+                          onToggle={() => toggleExpanded(customerId)}
+                          downloadLabel={t("docs.download")}
+                        />
+                      ))
+                    : paginatedDocuments.map((doc) => (
+                        <DocumentRow
+                          key={doc.id}
+                          doc={doc}
+                          locale={locale}
+                          downloadLabel={t("docs.download")}
+                        />
+                      ))}
+                </div>
+
+                {!isAdmin && totalPages > 1 && (
+                  <div
+                    className="flex items-center justify-between"
+                    style={{ marginTop: 32, paddingTop: 24, fontFamily: sans }}
+                  >
+                    <div style={{ fontSize: 13, color: C.stoneText }}>
+                      {t("docs.pagination.info", { current: safePage, total: totalPages })}
+                    </div>
+                    <div className="flex gap-2">
+                      <PageButton
+                        label="Previous page"
+                        disabled={safePage === 1}
+                        onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                        direction="prev"
+                      />
+                      <PageButton
+                        label="Next page"
+                        disabled={safePage === totalPages}
+                        onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                        direction="next"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </aside>
+
+        {/* ── RIGHT SIDEBAR: Relationship Manager ── */}
+        <aside>
+          <div style={{ padding: 24, backgroundColor: C.bgSecondary, borderRadius: 8 }}>
+            <span style={{ ...LABEL, display: "block", marginBottom: 16 }}>
+              {t("docs.rm.headline")}
+            </span>
+
+            {rm ? (
+              <>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  {rm.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- presigned S3 URL, next/image can't proxy this
+                    <img
+                      src={rm.imageUrl}
+                      alt={rmName}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      aria-label={t("docs.rm.noPhoto")}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        backgroundColor: C.purple,
+                        color: C.bg,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: sans,
+                        fontSize: 18,
+                        fontWeight: 500,
+                        flexShrink: 0,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {rmInitials}
+                    </div>
+                  )}
+                  <span style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: C.dark, display: "block" }}>
+                    {rmName}
+                  </span>
+                </div>
+
+                {(rm.email || rm.phone) && (
+                  <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+                    {rm.email && (
+                      <a href={`mailto:${rm.email}`} className="tellian-portal-kontakt">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <rect x="3" y="5" width="18" height="14" rx="1.5" />
+                          <path d="M3.5 6l8.5 7 8.5-7" />
+                        </svg>
+                        <span>{rm.email}</span>
+                      </a>
+                    )}
+                    {rm.phone && (
+                      <a href={`tel:${rm.phone.replace(/\s/g, "")}`} className="tellian-portal-kontakt">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" />
+                        </svg>
+                        <span>{rm.phone}</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {rm.email && (
+                  <a
+                    href={`mailto:${rm.email}`}
+                    className="tellian-portal-cta"
+                    style={{
+                      marginTop: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 10,
+                      minHeight: 48,
+                      fontFamily: sans,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: C.bg,
+                      backgroundColor: C.purple,
+                      textDecoration: "none",
+                      borderRadius: 0,
+                    }}
+                  >
+                    {t("docs.rm.contact")}
+                    <span aria-hidden>→</span>
+                  </a>
+                )}
+              </>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    backgroundColor: C.subtle,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.stoneText} strokeWidth="1.5" aria-hidden>
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <span style={{ fontFamily: sans, fontSize: 13, color: C.stoneText, fontStyle: "italic" }}>
+                  {t("docs.rm.noRm")}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {(user?.street || user?.city || user?.zipCode) && (
+            <div style={{ padding: "16px 24px", borderLeft: `2px solid ${C.line}`, marginTop: 24 }}>
+              <span style={{ ...LABEL, display: "block", marginBottom: 10 }}>
+                {t("docs.profile.address")}
+              </span>
+              <div style={{ fontFamily: sans, fontSize: 14, color: C.dark, lineHeight: 1.5 }}>
+                {user.street && <span style={{ display: "block" }}>{user.street}</span>}
+                {(user.zipCode || user.city) && (
+                  <span style={{ display: "block" }}>
+                    {[user.zipCode, user.city].filter(Boolean).join(" ")}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
+
+      <style>{`
+        .tellian-portal-dokument-icon { transition: background-color ${DURATION.fast}ms ease, color ${DURATION.fast}ms ease; }
+        .tellian-portal-dokument:hover .tellian-portal-dokument-icon { color: ${C.dark}; background-color: ${C.bgSecondary}; }
+        .tellian-portal-dokument:focus-visible,
+        .tellian-portal-gruppe:focus-visible,
+        .tellian-portal-kontakt:focus-visible,
+        .tellian-portal-cta:focus-visible { outline: 2px solid ${C.purple}; outline-offset: 2px; }
+        .tellian-portal-kontakt {
+          display: flex; align-items: center; gap: 10px; min-height: 36px;
+          font-family: ${sans}; font-size: 14px; color: ${C.dark};
+          text-decoration: none;
+        }
+        .tellian-portal-kontakt svg { color: ${C.stoneText}; flex-shrink: 0; }
+        .tellian-portal-kontakt:hover span { text-decoration: underline; text-underline-offset: 3px; }
+        .tellian-portal-cta { transition: background-color ${DURATION.fast}ms ease; }
+        .tellian-portal-cta:hover { background-color: ${C.purpleHover} !important; }
+      `}</style>
     </PortalLayout>
   );
 }
 
+/* Whole row is the download link (presigned URL). */
 function DocumentRow({
   doc,
   locale,
-  isAdmin,
-  t,
+  downloadLabel,
 }: {
   doc: Document;
-  locale: string;
-  isAdmin: boolean;
-  t: ReturnType<typeof useI18n>["t"];
+  locale: Locale;
+  downloadLabel: string;
 }) {
-  const dateLabel = `${isAdmin && doc.customerId ? `${doc.customerId} · ` : ""}${formatDate(doc.lastModified, locale)}`;
-
+  const date = formatDate(doc.lastModified, locale);
   return (
     <a
       href={doc.downloadUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="grid grid-cols-1 lg:grid-cols-[1fr_120px_120px_140px] lg:items-center lg:gap-4 group"
+      aria-label={`${downloadLabel}: ${doc.title}`}
+      className="tellian-portal-dokument grid grid-cols-[minmax(0,1fr)_44px] lg:grid-cols-[minmax(0,1fr)_120px_44px] gap-3 lg:gap-4 items-center"
       style={{
         padding: "16px 0",
-        borderBottom: "1px solid var(--tellian-line)",
+        borderBottom: `1px solid ${C.line}`,
         textDecoration: "none",
-        transition: "background-color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        color: C.dark,
+        width: "100%",
       }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.backgroundColor = "var(--tellian-bg-secondary)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.backgroundColor = "transparent")
-      }
     >
-      {/* Mobile / tablet: stacked card row */}
-      <div className="flex items-start justify-between gap-3 lg:hidden">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <span
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "var(--tellian-dark)",
-              display: "block",
-            }}
-          >
-            {doc.title}
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-inter), 'Inter', sans-serif",
-              fontSize: "12px",
-              color: "var(--tellian-stone)",
-              display: "block",
-              marginTop: "4px",
-            }}
-          >
-            {dateLabel} · {doc.fileFormat} · {doc.fileSize}
-          </span>
-        </div>
-        <span
-          aria-label={`${t("docs.download")}: ${doc.title}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: "44px",
-            minHeight: "44px",
-            color: "var(--tellian-stone)",
-            flexShrink: 0,
-          }}
-        >
-          <ArrowDownToLine size={16} />
-        </span>
-      </div>
-
-      {/* Desktop: 4-column grid row */}
-      <div className="hidden lg:contents">
-        <span
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "14px",
-            fontWeight: 500,
-            color: "var(--tellian-dark)",
-          }}
-        >
+      <span style={{ minWidth: 0 }}>
+        <span style={{ fontFamily: sans, fontSize: 15, fontWeight: 500, color: C.dark, display: "block" }}>
           {doc.title}
         </span>
-        <span
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "13px",
-            color: "var(--tellian-stone)",
-          }}
-        >
-          {dateLabel}
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "13px",
-            color: "var(--tellian-stone)",
-          }}
-        >
+        <span style={{ fontFamily: sans, fontSize: 12, color: C.stoneText, display: "block", marginTop: 4 }}>
+          <span className="lg:hidden">{date} · </span>
           {doc.fileFormat} · {doc.fileSize}
         </span>
-        <span
-          className="inline-flex items-center"
-          style={{
-            gap: "6px",
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "11px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--tellian-stone)",
-          }}
-        >
-          <ArrowDownToLine size={14} />
-          {t("docs.download")}
-        </span>
-      </div>
+      </span>
+      <span className="hidden lg:block" style={{ fontFamily: sans, fontSize: 13, color: C.stoneText }}>
+        {date}
+      </span>
+      <span
+        className="tellian-portal-dokument-icon"
+        style={{
+          width: 44,
+          height: 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: C.stoneText,
+          borderRadius: "50%",
+        }}
+      >
+        <DownloadIcon size={18} />
+      </span>
     </a>
   );
 }
@@ -824,70 +702,65 @@ function CustomerGroup({
   locale,
   isOpen,
   onToggle,
-  t,
+  downloadLabel,
 }: {
   customerId: string;
   docs: Document[];
-  locale: string;
+  locale: Locale;
   isOpen: boolean;
   onToggle: () => void;
-  t: ReturnType<typeof useI18n>["t"];
+  downloadLabel: string;
 }) {
   return (
-    <div style={{ borderBottom: "1px solid var(--tellian-line)" }}>
+    <div style={{ borderBottom: `1px solid ${C.line}` }}>
       <button
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="w-full text-left"
+        className="tellian-portal-gruppe"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "16px",
+          gap: 16,
           padding: "20px 0",
           background: "transparent",
           border: "none",
           cursor: "pointer",
           width: "100%",
+          textAlign: "left",
         }}
       >
         <span
-          className="flex items-center"
           style={{
-            gap: "12px",
-            fontFamily: "var(--font-lustria), 'Lustria', serif",
-            fontSize: "22px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            fontFamily: serif,
+            fontSize: 22,
             fontWeight: 400,
-            color: "var(--tellian-dark)",
+            color: C.dark,
           }}
         >
-          {isOpen ? (
-            <ChevronDown size={18} />
-          ) : (
-            <ChevronRight size={18} />
-          )}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden
+            style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: `transform ${DURATION.fast}ms ease` }}
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
           {customerId}
         </span>
-        <span
-          style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "13px",
-            color: "var(--tellian-stone)",
-          }}
-        >
-          {docs.length}
-        </span>
+        <span style={{ fontFamily: sans, fontSize: 13, color: C.stoneText }}>{docs.length}</span>
       </button>
       {isOpen && (
-        <div style={{ paddingLeft: "30px", paddingBottom: "8px" }}>
+        <div style={{ paddingLeft: 30, paddingBottom: 8 }}>
           {docs.map((doc) => (
-            <DocumentRow
-              key={doc.id}
-              doc={doc}
-              locale={locale}
-              isAdmin={false}
-              t={t}
-            />
+            <DocumentRow key={doc.id} doc={doc} locale={locale} downloadLabel={downloadLabel} />
           ))}
         </div>
       )}
@@ -895,86 +768,40 @@ function CustomerGroup({
   );
 }
 
-function EmptySearchState({
-  t,
+function PageButton({
+  label,
+  disabled,
+  onClick,
+  direction,
 }: {
-  t: (key: "docs.empty.search.headline" | "docs.empty.search.subtitle") => string;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  direction: "prev" | "next";
 }) {
   return (
-    <div
-      className="flex flex-col items-center text-center"
-      style={{ padding: "96px 24px" }}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 40,
+        height: 40,
+        border: `1px solid ${C.line}`,
+        borderRadius: 2,
+        background: "transparent",
+        color: C.dark,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.3 : 1,
+      }}
     >
-      <Search
-        size={48}
-        style={{ color: "var(--tellian-muted)", opacity: 0.5 }}
-      />
-      <h2
-        style={{
-          fontFamily: "var(--font-lustria), 'Lustria', serif",
-          fontSize: "28px",
-          fontWeight: 400,
-          color: "var(--tellian-dark)",
-          margin: 0,
-          marginTop: "24px",
-        }}
-      >
-        {t("docs.empty.search.headline")}
-      </h2>
-      <p
-        style={{
-          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-          fontSize: "15px",
-          fontWeight: 400,
-          color: "var(--tellian-stone)",
-          lineHeight: 1.6,
-          marginTop: "12px",
-          marginBottom: 0,
-          maxWidth: "400px",
-        }}
-      >
-        {t("docs.empty.search.subtitle")}
-      </p>
-    </div>
-  );
-}
-
-function EmptyState({ t }: { t: (key: "docs.empty.headline" | "docs.empty.subtitle") => string }) {
-  return (
-    <div
-      className="flex flex-col items-center text-center"
-      style={{ padding: "96px 24px" }}
-    >
-      <FileText
-        size={48}
-        style={{ color: "var(--tellian-muted)", opacity: 0.5 }}
-      />
-      <h2
-        style={{
-          fontFamily: "var(--font-lustria), 'Lustria', serif",
-          fontSize: "28px",
-          fontWeight: 400,
-          color: "var(--tellian-dark)",
-          margin: 0,
-          marginTop: "24px",
-        }}
-      >
-        {t("docs.empty.headline")}
-      </h2>
-      <p
-        style={{
-          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-          fontSize: "15px",
-          fontWeight: 400,
-          color: "var(--tellian-stone)",
-          lineHeight: 1.6,
-          marginTop: "12px",
-          marginBottom: 0,
-          maxWidth: "400px",
-        }}
-      >
-        {t("docs.empty.subtitle")}
-      </p>
-    </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        {direction === "prev" ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 6l6 6-6 6" />}
+      </svg>
+    </button>
   );
 }

@@ -20,7 +20,7 @@ const lustria = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Tellian Capital — Kundenportal",
+  title: "Tellian Capital — Portal",
   description: "Dokumentenzugang fuer Kunden von Tellian Capital AG",
 };
 

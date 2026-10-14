@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { TellianLogo } from "@/components/TellianLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -9,8 +8,13 @@ import { FloatingField } from "@/components/FloatingField";
 import { PasswordField } from "@/components/PasswordField";
 import { useI18n } from "@/lib/i18n";
 import { EASE, DURATION } from "@/lib/motion";
+import { C, serif, sans } from "@/lib/tokens";
 
 export type LoginMode = "customer" | "staff";
+
+/* Mirrors the design portal: eyebrow size is a local constant until the
+   main site exposes a shared token. */
+const EYEBROW_SIZE = "10px";
 
 type Stage =
   | { kind: "credentials" }
@@ -126,6 +130,7 @@ interface ModeConfig {
   identifierAutoComplete: string;
   identifierType: "text" | "email";
   eyebrowKey: "login.eyebrow" | "login.staff.eyebrow";
+  errorKey: "login.error" | "login.staff.error";
   validateIdentifier: (v: string) => ValidationKey | null;
   altLink: {
     href: string;
@@ -141,6 +146,7 @@ const CUSTOMER_CONFIG: ModeConfig = {
   identifierAutoComplete: "username",
   identifierType: "text",
   eyebrowKey: "login.eyebrow",
+  errorKey: "login.error",
   validateIdentifier: validateCustomerId,
   altLink: { href: "/login/staff", labelKey: "login.altLink.staff" },
 };
@@ -153,6 +159,7 @@ const STAFF_CONFIG: ModeConfig = {
   identifierAutoComplete: "email",
   identifierType: "email",
   eyebrowKey: "login.staff.eyebrow",
+  errorKey: "login.staff.error",
   validateIdentifier: validateEmail,
   altLink: { href: "/login", labelKey: "login.altLink.customer" },
 };
@@ -196,10 +203,10 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       : 0;
   const passwordProgressColor =
     passwordProgressFraction < 0.4
-      ? "var(--tellian-error)"
+      ? C.error
       : passwordProgressFraction < 0.8
-        ? "var(--tellian-warning)"
-        : "var(--tellian-success)";
+        ? C.warning
+        : C.success;
 
   async function startMfaSetup(session: string, customerIdArg: string) {
     try {
@@ -210,7 +217,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       });
       const data = (await res.json()) as MfaSetupInitResponse;
       if (!res.ok || !data.secretCode || !data.session || !data.otpauthUrl) {
-        setError(data.error ?? t("login.error"));
+        setError(data.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
@@ -224,7 +231,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       setInfo(null);
       setLoading(false);
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -293,13 +300,13 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       });
       const data = (await res.json()) as { status?: string; error?: string };
       if (!res.ok) {
-        setError(data.error ?? t("login.error"));
+        setError(data.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
       window.location.assign("/");
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -399,7 +406,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       setLoading(false);
       return;
     }
-    setError(data.error ?? t("login.error"));
+    setError(data.error ?? t(config.errorKey));
     setLoading(false);
   }
 
@@ -409,9 +416,8 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
     setError(null);
     setLoading(true);
     try {
-      // The skip preference is now managed entirely through Cognito attributes 
-      // in the /api/auth/skip-mfa call below. We no longer use cookies.
-
+      // The skip preference is managed entirely through Cognito attributes
+      // in the /api/auth/skip-mfa call below.
       const skipRes = await fetch("/api/auth/skip-mfa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -424,7 +430,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       const skipData = (await skipRes.json()) as LoginResponse;
 
       if (!skipRes.ok) {
-        setError(skipData.error ?? t("login.error"));
+        setError(skipData.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
@@ -440,10 +446,10 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       }
 
       // Any other unexpected challenge — show an error
-      setError(skipData.error ?? t("login.error"));
+      setError(skipData.error ?? t(config.errorKey));
       setLoading(false);
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -469,13 +475,13 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       });
       const data = (await res.json()) as LoginResponse;
       if (!res.ok) {
-        setError(data.error ?? t("login.error"));
+        setError(data.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
       handleAuthResponse(data);
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -501,13 +507,13 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       });
       const data = (await res.json()) as LoginResponse;
       if (!res.ok) {
-        setError(data.error ?? t("login.error"));
+        setError(data.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
       handleAuthResponse(data);
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -557,7 +563,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
       });
       const data = (await res.json()) as LoginResponse;
       if (!res.ok) {
-        setError(data.error ?? t("login.error"));
+        setError(data.error ?? t(config.errorKey));
         setLoading(false);
         return;
       }
@@ -572,7 +578,7 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
         handleAuthResponse(data);
       }
     } catch {
-      setError(t("login.error"));
+      setError(t(config.errorKey));
       setLoading(false);
     }
   }
@@ -580,552 +586,493 @@ export default function LoginForm({ mode }: { mode: LoginMode }) {
   const justSavedPassword =
     stage.kind === "credentials" && info === t("challenge.newPassword.success");
 
-  return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden">
-      <div
-        className="block md:hidden w-full overflow-hidden"
-        style={{ height: "200px" }}
-      >
-        <img
-          src="/login-hero.jpeg"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: "center 40%",
-            filter: "saturate(0.7) contrast(1.02)",
-          }}
-        />
-      </div>
+  /* Submit turns Imperial Purple as soon as both fields are filled. */
+  const credentialsReady = identifier.trim() !== "" && password !== "";
 
-      <div
-        className="hidden md:block lg:hidden w-full overflow-hidden"
-        style={{ height: "40vh" }}
-      >
-        <img
-          src="/login-hero.jpeg"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: "center 40%",
-            filter: "saturate(0.7) contrast(1.02)",
-          }}
-        />
-      </div>
+  const headline = justSavedPassword
+    ? t("challenge.newPassword.successHeadline")
+    : stage.kind === "credentials"
+      ? t("login.headline")
+      : stage.kind === "newPassword"
+        ? t("challenge.newPassword.headline")
+        : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
+          ? t("challenge.mfaSetup.headline")
+          : t("challenge.mfa.headline");
 
-      <div className="hidden lg:block lg:w-1/2 lg:h-screen overflow-hidden">
-        <img
-          src="/login-hero.jpeg"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{
-            objectPosition: "center 40%",
-            filter: "saturate(0.7) contrast(1.02)",
-          }}
-        />
-      </div>
+  /* The design shows no intro under "Willkommen zurück." — only the
+     set-password and confirmation states carry one. */
+  const intro = justSavedPassword
+    ? t("challenge.newPassword.success")
+    : stage.kind === "credentials"
+      ? null
+      : stage.kind === "newPassword"
+        ? t("challenge.newPassword.subtext")
+        : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
+          ? t("challenge.mfaSetup.subtext")
+          : t("challenge.mfa.subtext");
 
-      <div
-        className="w-full lg:w-1/2 flex-1 flex flex-col relative px-6 md:px-[clamp(40px,8vw,80px)] lg:px-[clamp(48px,5vw,96px)] lg:overflow-y-auto lg:h-screen"
-        style={{ backgroundColor: "var(--tellian-bg)" }}
+  /* ════════════════════════════════════════════════════════════
+     ZONE 1 — HEADER (utility row)
+     ════════════════════════════════════════════════════════════ */
+  const headerZone = (
+    <div className="flex items-center justify-between shrink-0 py-5 md:py-7">
+      <a
+        href="https://telliancapital.vercel.app/de"
+        style={linkStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.color = C.dark)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = C.stone)}
       >
-        <div
-          className="flex items-center justify-between"
-          style={{ padding: "clamp(20px, 3vw, 28px) 0" }}
-        >
-          <a
-            href="https://telliancapital.vercel.app/de"
-            aria-label={t("login.back")}
-            style={linkStyle}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--tellian-dark)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "var(--tellian-stone)")
-            }
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+          <path
+            d="M19 12H5M12 19l-7-7 7-7"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span>{t("login.back")}</span>
+      </a>
+      <LanguageToggle />
+    </div>
+  );
+
+  /* ════════════════════════════════════════════════════════════
+     ZONE 2 — CORE (Logo → Eyebrow → Headline → Form)
+     ════════════════════════════════════════════════════════════ */
+  const coreZone = (
+    <div
+      className="flex-1 flex flex-col justify-start pt-2 md:pt-3"
+      style={{ maxWidth: 420 }}
+    >
+      <TellianLogo className="h-20 md:h-[120px] mb-7 md:mb-10" />
+
+      <span style={eyebrowStyle}>{t(config.eyebrowKey)}</span>
+
+      {/* Accent line — matches main site section pattern */}
+      <div style={{ width: 28, height: 1.5, backgroundColor: C.dark, marginTop: 16 }} />
+
+      <h1
+        className="text-[clamp(28px,8vw,36px)] md:text-[clamp(36px,4vw,48px)]"
+        style={headlineStyle}
+      >
+        <em style={{ fontStyle: "italic", fontWeight: 400 }}>{headline}</em>
+      </h1>
+
+      {intro && <p style={introStyle}>{intro}</p>}
+
+      {justSavedPassword && (
+        <div style={{ marginTop: 32, display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              backgroundColor: C.successBg,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              style={{ flexShrink: 0 }}
-            >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path
-                d="M19 12H5M12 19l-7-7 7-7"
-                stroke="currentColor"
-                strokeWidth="1.5"
+                d="M5 12l5 5L20 7"
+                stroke={C.success}
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
-            <span>{t("login.back")}</span>
-          </a>
-          <LanguageToggle />
+          </div>
+          <span
+            style={{
+              fontFamily: sans,
+              fontSize: 13,
+              color: C.success,
+              fontWeight: 500,
+              letterSpacing: "0.05em",
+            }}
+          >
+            {t("challenge.newPassword.saved")}
+          </span>
         </div>
+      )}
 
-        <div
-          className="flex-1 flex flex-col justify-start"
-          style={{ paddingTop: "clamp(8px, 1.5vw, 12px)", maxWidth: "420px" }}
-        >
-          <TellianLogo
-            style={{
-              width: "clamp(80px, 20vw, 120px)",
-              height: "auto",
-              marginBottom: "clamp(28px, 5vw, 40px)",
+      <ErrorBanner error={error} />
+
+      {stage.kind === "credentials" ? (
+        <form onSubmit={handleCredentials} noValidate style={formStyle}>
+          <FloatingField
+            id="identifier"
+            label={t(config.identifierLabelKey)}
+            placeholder={
+              config.identifierPlaceholderKey
+                ? t(config.identifierPlaceholderKey)
+                : undefined
+            }
+            type={config.identifierType}
+            value={identifier}
+            onChange={(v) => {
+              setIdentifier(v);
+              if (identifierError) setIdentifierError(null);
+              if (error) setError(null);
             }}
+            autoComplete={config.identifierAutoComplete}
+            error={identifierError ? t(identifierError) : null}
+            disabled={loading}
+            required
           />
-
-          <span style={eyebrowStyle}>{t(config.eyebrowKey)}</span>
-
-          <div
-            style={{
-              width: "28px",
-              height: "1.5px",
-              backgroundColor: "var(--tellian-dark)",
-              marginTop: "16px",
+          <FloatingField
+            id="password"
+            label={t("login.password.label")}
+            type="password"
+            value={password}
+            onChange={(v) => {
+              setPassword(v);
+              if (passwordError) setPasswordError(null);
+              if (error) setError(null);
             }}
+            autoComplete="current-password"
+            error={passwordError ? t(passwordError) : null}
+            disabled={loading}
+            required
           />
-
-          <h1 style={headlineStyle}>
-            <em style={{ fontStyle: "italic", fontWeight: 400 }}>
-              {justSavedPassword
-                ? t("challenge.newPassword.successHeadline")
-                : stage.kind === "credentials"
-                  ? t("login.headline")
-                  : stage.kind === "newPassword"
-                    ? t("challenge.newPassword.headline")
-                    : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
-                      ? t("challenge.mfaSetup.headline")
-                      : t("challenge.mfa.headline")}
-            </em>
-          </h1>
-
-          <p style={subtextStyle}>
-            {justSavedPassword
-              ? t("challenge.newPassword.success")
-              : stage.kind === "credentials"
-                ? t("login.subtext")
-                : stage.kind === "newPassword"
-                  ? t("challenge.newPassword.subtext")
-                  : stage.kind === "mfaSetup" || stage.kind === "optionalMfaSetup"
-                    ? t("challenge.mfaSetup.subtext")
-                    : t("challenge.mfa.subtext")}
-          </p>
-
-          {justSavedPassword && (
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--tellian-success-bg)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Check size={16} color="var(--tellian-success)" />
-              </div>
-              <span
-                style={{
-                  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  letterSpacing: "0.05em",
-                  color: "var(--tellian-success)",
-                }}
-              >
-                {t("challenge.newPassword.saved")}
-              </span>
-            </div>
-          )}
-
-          {stage.kind === "credentials" ? (
-            <form
-              onSubmit={handleCredentials}
-              noValidate
-              style={{
-                marginTop: "28px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-              }}
-            >
-              <FloatingField
-                id="identifier"
-                label={t(config.identifierLabelKey)}
-                placeholder={
-                  config.identifierPlaceholderKey
-                    ? t(config.identifierPlaceholderKey)
-                    : undefined
-                }
-                type={config.identifierType}
-                value={identifier}
+          <PrimaryButton
+            loading={loading}
+            ready={credentialsReady}
+            label={t("login.submit")}
+            loadingLabel={t("login.loading")}
+          />
+        </form>
+      ) : stage.kind === "optionalMfaSetup" ? (
+        <form onSubmit={handleOptionalMfaVerify} noValidate style={formStyle}>
+          <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
+          <FloatingField
+            id="setupCode"
+            label={t("challenge.mfaSetup.label")}
+            type="text"
+            value={setupCode}
+            onChange={(v) => {
+              setSetupCode(v);
+              if (setupCodeError) setSetupCodeError(null);
+            }}
+            autoComplete="one-time-code"
+            error={setupCodeError ? t(setupCodeError) : null}
+            disabled={loading}
+            required
+          />
+          <SecondaryButton loading={loading} label={t("challenge.submit")} />
+          <button
+            type="button"
+            onClick={handleOptionalMfaSkip}
+            disabled={loading}
+            style={skipButtonStyle(loading)}
+          >
+            {t("challenge.mfaSetup.skip")}
+          </button>
+        </form>
+      ) : stage.kind === "mfaSetup" ? (
+        <form onSubmit={handleMfaSetupVerify} noValidate style={formStyle}>
+          <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
+          <FloatingField
+            id="setupCode"
+            label={t("challenge.mfaSetup.label")}
+            type="text"
+            value={setupCode}
+            onChange={(v) => {
+              setSetupCode(v);
+              if (setupCodeError) setSetupCodeError(null);
+            }}
+            autoComplete="one-time-code"
+            error={setupCodeError ? t(setupCodeError) : null}
+            disabled={loading}
+            required
+          />
+          <SecondaryButton loading={loading} label={t("challenge.submit")} />
+          <button
+            type="button"
+            onClick={handleSkipMfa}
+            disabled={loading}
+            style={skipButtonStyle(loading)}
+          >
+            {t("challenge.mfaSetup.skip")}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleChallenge} noValidate style={formStyle}>
+          {stage.kind === "newPassword" ? (
+            <>
+              <PasswordField
+                id="newPassword"
+                label={t("challenge.newPassword.label")}
+                value={newPassword}
                 onChange={(v) => {
-                  setIdentifier(v);
-                  if (identifierError) setIdentifierError(null);
+                  setNewPassword(v);
+                  if (newPasswordError) setNewPasswordError(null);
                 }}
-                autoComplete={config.identifierAutoComplete}
-                error={identifierError ? t(identifierError) : null}
-              />
-              <FloatingField
-                id="password"
-                label={t("login.password.label")}
-                type="password"
-                value={password}
-                onChange={(v) => {
-                  setPassword(v);
-                  if (passwordError) setPasswordError(null);
-                }}
-                autoComplete="current-password"
-                error={passwordError ? t(passwordError) : null}
-              />
-              <ErrorText error={error} />
-              <SubmitButton loading={loading} label={t("login.submit")} />
-            </form>
-          ) : stage.kind === "optionalMfaSetup" ? (
-            <form
-              onSubmit={handleOptionalMfaVerify}
-              noValidate
-              style={{
-                marginTop: "28px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-              }}
-            >
-              <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
-              <FloatingField
-                id="setupCode"
-                label={t("challenge.mfaSetup.label")}
-                type="text"
-                value={setupCode}
-                onChange={(v) => {
-                  setSetupCode(v);
-                  if (setupCodeError) setSetupCodeError(null);
-                }}
-                autoComplete="one-time-code"
-                error={setupCodeError ? t(setupCodeError) : null}
-              />
-              <ErrorText error={error} />
-              <SubmitButton loading={loading} label={t("challenge.submit")} />
-              <button
-                type="button"
-                onClick={handleOptionalMfaSkip}
+                autoComplete="new-password"
+                error={newPasswordError ? t(newPasswordError) : null}
                 disabled={loading}
-                style={skipButtonStyle(loading)}
-              >
-                {t("challenge.mfaSetup.skip")}
-              </button>
-            </form>
-          ) : stage.kind === "mfaSetup" ? (
-            <form
-              onSubmit={handleMfaSetupVerify}
-              noValidate
-              style={{
-                marginTop: "28px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-              }}
-            >
-              <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
-              <FloatingField
-                id="setupCode"
-                label={t("challenge.mfaSetup.label")}
-                type="text"
-                value={setupCode}
-                onChange={(v) => {
-                  setSetupCode(v);
-                  if (setupCodeError) setSetupCodeError(null);
-                }}
-                autoComplete="one-time-code"
-                error={setupCodeError ? t(setupCodeError) : null}
               />
-              <ErrorText error={error} />
-              <SubmitButton loading={loading} label={t("challenge.submit")} />
-              <button
-                type="button"
-                onClick={handleSkipMfa}
+              <PasswordField
+                id="confirmPassword"
+                label={t("challenge.confirmPassword.label")}
+                value={confirmPassword}
+                onChange={(v) => {
+                  setConfirmPassword(v);
+                  if (confirmPasswordError) setConfirmPasswordError(null);
+                }}
+                autoComplete="new-password"
+                error={confirmPasswordError ? t(confirmPasswordError) : null}
                 disabled={loading}
-                style={skipButtonStyle(loading)}
-              >
-                {t("challenge.mfaSetup.skip")}
-              </button>
-            </form>
-          ) : (
-            <form
-              onSubmit={handleChallenge}
-              noValidate
-              style={{
-                marginTop: "28px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-              }}
-            >
-              {stage.kind === "newPassword" ? (
-                <>
-                  <PasswordField
-                    id="newPassword"
-                    label={t("challenge.newPassword.label")}
-                    value={newPassword}
-                    onChange={(v) => {
-                      setNewPassword(v);
-                      if (newPasswordError) setNewPasswordError(null);
-                    }}
-                    autoComplete="new-password"
-                    error={newPasswordError ? t(newPasswordError) : null}
-                  />
-                  <PasswordField
-                    id="confirmPassword"
-                    label={t("challenge.confirmPassword.label")}
-                    value={confirmPassword}
-                    onChange={(v) => {
-                      setConfirmPassword(v);
-                      if (confirmPasswordError) setConfirmPasswordError(null);
-                    }}
-                    autoComplete="new-password"
-                    error={
-                      confirmPasswordError ? t(confirmPasswordError) : null
-                    }
-                  />
+              />
 
-                  <div
-                    role="group"
-                    aria-label={t("challenge.newPassword.requirements")}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                        fontSize: "10px",
-                        fontWeight: 500,
-                        letterSpacing: "0.18em",
-                        textTransform: "uppercase",
-                        color: "var(--tellian-stone)",
-                        display: "block",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      {t("challenge.newPassword.requirements")}
-                    </span>
+              {/* Requirements checklist */}
+              <div role="group" aria-label={t("challenge.newPassword.requirements")}>
+                <span
+                  style={{
+                    fontFamily: sans,
+                    fontSize: 10,
+                    fontWeight: 500,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: C.stone,
+                    display: "block",
+                    marginBottom: 10,
+                  }}
+                >
+                  {t("challenge.newPassword.requirements")}
+                </span>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
-                      }}
-                    >
-                      {passwordRuleResults.map((r) => (
-                        <div
-                          key={r.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          {r.passed ? (
-                            <Check
-                              size={14}
-                              color="var(--tellian-success)"
-                              style={{ flexShrink: 0 }}
-                            />
-                          ) : (
-                            <span
-                              aria-hidden
-                              style={{
-                                width: 14,
-                                height: 14,
-                                flexShrink: 0,
-                                display: "inline-block",
-                                borderRadius: "50%",
-                                border: `1.5px solid ${
-                                  newPassword.length > 0
-                                    ? "var(--tellian-error)"
-                                    : "var(--tellian-line)"
-                                }`,
-                              }}
-                            />
-                          )}
-                          <span
-                            style={{
-                              fontFamily:
-                                "var(--font-inter), 'Inter', sans-serif",
-                              fontSize: "12px",
-                              color: r.passed
-                                ? "var(--tellian-success)"
-                                : newPassword.length > 0
-                                  ? "var(--tellian-dark)"
-                                  : "var(--tellian-stone)",
-                              transition: "color 200ms ease",
-                            }}
-                          >
-                            {t(r.labelKey)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ marginTop: "12px" }}>
-                      <div
-                        style={{
-                          width: "100%",
-                          height: 3,
-                          backgroundColor: "var(--tellian-subtle)",
-                          borderRadius: 2,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          role="progressbar"
-                          aria-valuenow={passedRuleCount}
-                          aria-valuemin={0}
-                          aria-valuemax={passwordRuleResults.length}
-                          aria-label={t("challenge.newPassword.progress", {
-                            passed: passedRuleCount,
-                            total: passwordRuleResults.length,
-                          })}
-                          style={{
-                            width: `${passwordProgressFraction * 100}%`,
-                            height: "100%",
-                            backgroundColor:
-                              newPassword.length > 0
-                                ? passwordProgressColor
-                                : "transparent",
-                            borderRadius: 2,
-                            transition: `width ${DURATION.normal}ms ${EASE.standard}, background-color ${DURATION.normal}ms ease`,
-                          }}
-                        />
-                      </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {passwordRuleResults.map((r) => (
+                    <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                        {r.passed ? (
+                          <path
+                            d="M5 12l5 5L20 7"
+                            stroke={C.success}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        ) : (
+                          <path
+                            d="M18 6L6 18M6 6l12 12"
+                            stroke={newPassword.length > 0 ? C.error : C.line}
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        )}
+                      </svg>
                       <span
-                        aria-live="polite"
                         style={{
-                          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-                          fontSize: "11px",
-                          color: "var(--tellian-stone)",
-                          display: "block",
-                          marginTop: "6px",
+                          fontFamily: sans,
+                          fontSize: 12,
+                          color: r.passed ? C.success : newPassword.length > 0 ? C.dark : C.stone,
+                          transition: "color 200ms ease",
                         }}
                       >
-                        {newPassword.length > 0 &&
-                          t("challenge.newPassword.progress", {
-                            passed: passedRuleCount,
-                            total: passwordRuleResults.length,
-                          })}
+                        {t(r.labelKey)}
                       </span>
                     </div>
+                  ))}
+                </div>
+
+                {/* Progress bar — "requirements met", not "strength" */}
+                <div style={{ marginTop: 12 }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: 3,
+                      backgroundColor: C.subtle,
+                      borderRadius: 2,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      role="progressbar"
+                      aria-valuenow={passedRuleCount}
+                      aria-valuemin={0}
+                      aria-valuemax={passwordRuleResults.length}
+                      aria-label={t("challenge.newPassword.progress", {
+                        passed: passedRuleCount,
+                        total: passwordRuleResults.length,
+                      })}
+                      style={{
+                        width: `${passwordProgressFraction * 100}%`,
+                        height: "100%",
+                        backgroundColor:
+                          newPassword.length > 0 ? passwordProgressColor : "transparent",
+                        borderRadius: 2,
+                        transition: `width ${DURATION.normal}ms ${EASE.standard}, background-color ${DURATION.normal}ms ease`,
+                      }}
+                    />
                   </div>
-                </>
-              ) : (
-                <FloatingField
-                  id="mfaCode"
-                  label={t("challenge.mfa.label")}
-                  type="text"
-                  value={mfaCode}
-                  onChange={(v) => {
-                    setMfaCode(v);
-                    if (mfaCodeError) setMfaCodeError(null);
-                  }}
-                  autoComplete="one-time-code"
-                  error={mfaCodeError ? t(mfaCodeError) : null}
-                />
-              )}
-              <ErrorText error={error} />
-              <SubmitButton
-                loading={loading}
-                label={
-                  stage.kind === "newPassword"
-                    ? t("challenge.newPassword.submit")
-                    : t("challenge.submit")
-                }
-                loadingLabel={
-                  stage.kind === "newPassword"
-                    ? t("challenge.newPassword.loading")
-                    : undefined
-                }
-              />
-              {stage.kind === "mfa" && (
-                <button
-                  type="button"
-                  onClick={handleSkipMfa}
-                  disabled={loading}
-                  style={skipButtonStyle(loading)}
-                >
-                  {t("challenge.mfaSetup.skip")}
-                </button>
-              )}
-            </form>
-          )}
-
-          {/* {stage.kind === "credentials" && (
-            <div style={{ marginTop: "24px" }}>
-              <a href="#" style={mutedLinkStyle}>
-                {t("login.forgot")}
-              </a>
-            </div>
-          )} */}
-        </div>
-
-        <div
-          className="flex items-center flex-wrap gap-4 mt-auto"
-          style={{
-            borderTop: "1px solid var(--tellian-line)",
-            paddingTop: "24px",
-            paddingBottom: "clamp(8px, 3vw, 20px)",
-            justifyContent:
-              stage.kind === "credentials" ? "space-between" : "flex-end",
-          }}
-        >
-          {stage.kind === "credentials" && (
-            <a
-              href={config.altLink.href}
-              style={mutedLinkStyle}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--tellian-dark)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--tellian-stone)")
-              }
-            >
-              {t(config.altLink.labelKey)} →
-            </a>
-          )}
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden
-              style={{
-                display: "inline-block",
-                width: "16px",
-                height: "1px",
-                backgroundColor: "var(--tellian-line)",
-                flexShrink: 0,
+                  <span
+                    aria-live="polite"
+                    style={{
+                      fontFamily: sans,
+                      fontSize: 11,
+                      color: C.stone,
+                      display: "block",
+                      marginTop: 6,
+                    }}
+                  >
+                    {newPassword.length > 0 &&
+                      t("challenge.newPassword.progress", {
+                        passed: passedRuleCount,
+                        total: passwordRuleResults.length,
+                      })}
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <FloatingField
+              id="mfaCode"
+              label={t("challenge.mfa.label")}
+              type="text"
+              value={mfaCode}
+              onChange={(v) => {
+                setMfaCode(v);
+                if (mfaCodeError) setMfaCodeError(null);
               }}
+              autoComplete="one-time-code"
+              error={mfaCodeError ? t(mfaCodeError) : null}
+              disabled={loading}
+              required
             />
-            <span style={footerStyle}>{t("login.footer")}</span>
-          </div>
-        </div>
+          )}
+          <SecondaryButton
+            loading={loading}
+            label={
+              stage.kind === "newPassword"
+                ? t("challenge.newPassword.submit")
+                : t("challenge.submit")
+            }
+            loadingLabel={
+              stage.kind === "newPassword"
+                ? t("challenge.newPassword.loading")
+                : undefined
+            }
+          />
+          {stage.kind === "mfa" && (
+            <button
+              type="button"
+              onClick={handleSkipMfa}
+              disabled={loading}
+              style={skipButtonStyle(loading)}
+            >
+              {t("challenge.mfaSetup.skip")}
+            </button>
+          )}
+        </form>
+      )}
+    </div>
+  );
+
+  /* ════════════════════════════════════════════════════════════
+     ZONE 3 — FOOTER (secondary, anchored at the bottom)
+     ════════════════════════════════════════════════════════════ */
+  const footerZone = (
+    <div
+      className="flex items-center flex-wrap gap-4 shrink-0 mt-auto pb-5 md:pb-2"
+      style={{
+        paddingTop: 24,
+        borderTop: `1px solid ${C.line}`,
+        justifyContent: stage.kind === "credentials" ? "space-between" : "flex-end",
+      }}
+    >
+      {stage.kind === "credentials" && (
+        <a
+          href={config.altLink.href}
+          style={mutedLinkStyle}
+          onMouseEnter={(e) => (e.currentTarget.style.color = C.dark)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = C.stone)}
+        >
+          {t(config.altLink.labelKey)} →
+        </a>
+      )}
+      <div className="flex items-center" style={{ gap: 10 }}>
+        <div aria-hidden style={{ width: 16, height: 1, backgroundColor: C.line, flexShrink: 0 }} />
+        <span style={footerStyle}>{t("login.footer")}</span>
+      </div>
+    </div>
+  );
+
+  /* ════════════════════════════════════════════════════════════
+     LAYOUT — vertical (<1024, image strip on top) / desktop split
+     ════════════════════════════════════════════════════════════ */
+  return (
+    <div
+      className="flex-1 flex flex-col lg:flex-row min-h-screen lg:h-screen"
+      style={{ backgroundColor: C.bg }}
+    >
+      {/* Image strip (mobile + tablet): same motif as the desktop panel, full-bleed */}
+      <div className="lg:hidden w-full shrink-0 overflow-hidden h-[max(150px,22vh)] md:h-[max(200px,28vh)]">
+        {/* eslint-disable-next-line @next/next/no-img-element -- static hero, full-bleed cover */}
+        <img
+          src="/login-hero.jpg"
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "block",
+            objectFit: "cover",
+            objectPosition: "center 18%",
+          }}
+        />
+      </div>
+
+      {/* Desktop — left image (hard edge) */}
+      <div className="hidden lg:block lg:w-1/2 lg:h-screen shrink-0 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element -- static hero, full-bleed cover */}
+        <img
+          src="/login-hero.jpg"
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "block",
+            objectFit: "cover",
+            objectPosition: "center 42%",
+          }}
+        />
+      </div>
+
+      {/* Form column (3 zones) */}
+      <div className="flex-1 flex flex-col px-6 md:px-[clamp(40px,8vw,80px)] lg:px-[clamp(48px,5vw,96px)] lg:overflow-auto lg:h-screen">
+        {headerZone}
+        {coreZone}
+        {footerZone}
       </div>
     </div>
   );
 }
 
-function ErrorText({ error }: { error: string | null }) {
+/* Server error — bordered banner between headline and form (design). */
+function ErrorBanner({ error }: { error: string | null }) {
   if (!error) return null;
   return (
-    <p role="alert" style={errorStyle}>
+    <div
+      role="alert"
+      aria-live="assertive"
+      style={{
+        marginTop: 24,
+        padding: "12px 16px",
+        backgroundColor: C.errorBg,
+        border: `1px solid ${C.error}`,
+        borderRadius: 4,
+        fontFamily: sans,
+        fontSize: 13,
+        color: C.error,
+        lineHeight: 1.5,
+      }}
+    >
       {error}
-    </p>
+    </div>
   );
 }
 
@@ -1137,18 +1084,18 @@ function MfaSetupSecret({
   t: ReturnType<typeof useI18n>["t"];
 }) {
   return (
-    <div style={{ marginBottom: "8px" }}>
-      <p style={{ ...subtextStyle, marginTop: 0, fontSize: "13px" }}>
+    <div style={{ marginBottom: 8 }}>
+      <p style={{ ...introStyle, marginTop: 0, fontSize: 13 }}>
         {t("challenge.mfaSetup.instructions")}
       </p>
       <div
         style={{
-          marginTop: "16px",
-          padding: "16px",
+          marginTop: 16,
+          padding: 16,
           backgroundColor: "#FFFFFF",
           display: "inline-block",
-          border: "1px solid var(--tellian-line)",
-          borderRadius: "4px",
+          border: `1px solid ${C.line}`,
+          borderRadius: 4,
         }}
       >
         <QRCodeSVG value={otpauthUrl} size={176} level="M" />
@@ -1157,7 +1104,88 @@ function MfaSetupSecret({
   );
 }
 
-function SubmitButton({
+function Spinner() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 14,
+        height: 14,
+        border: `2px solid ${C.stone}`,
+        borderTopColor: C.dark,
+        borderRadius: "50%",
+        animation: "portal-spin 0.8s linear infinite",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+/* Login submit — muted until both fields are filled, then Imperial Purple.
+   Always clickable (shows field errors otherwise). */
+function PrimaryButton({
+  loading,
+  ready,
+  label,
+  loadingLabel,
+}: {
+  loading: boolean;
+  ready: boolean;
+  label: string;
+  loadingLabel: string;
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      style={{
+        fontFamily: sans,
+        fontSize: 12,
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        fontWeight: 600,
+        color: ready ? C.bg : C.stoneText,
+        backgroundColor: loading ? C.line : ready ? C.purple : "transparent",
+        border: `1px solid ${loading ? C.line : ready ? C.purple : C.line}`,
+        borderRadius: 0,
+        padding: "16px 32px",
+        cursor: loading ? "not-allowed" : "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        minHeight: 52,
+        width: "100%",
+        transition: `background-color ${DURATION.fast}ms ease, color ${DURATION.fast}ms ease, border-color ${DURATION.fast}ms ease`,
+        outline: "none",
+        marginTop: 8,
+      }}
+      onMouseEnter={(e) => {
+        if (!loading)
+          e.currentTarget.style.backgroundColor = ready ? C.purpleHover : C.bgSecondary;
+      }}
+      onMouseLeave={(e) => {
+        if (!loading)
+          e.currentTarget.style.backgroundColor = ready ? C.purple : "transparent";
+      }}
+    >
+      {loading ? (
+        <>
+          <Spinner />
+          <span>{loadingLabel}</span>
+        </>
+      ) : (
+        <>
+          <span>{label}</span>
+          <span aria-hidden>→</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+/* Challenge submit — Mushroom, matches main site + set-password design. */
+function SecondaryButton({
   loading,
   label,
   loadingLabel,
@@ -1170,34 +1198,45 @@ function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className="hover:bg-tellian-button-hover active:scale-[0.98]"
       style={{
-        width: "100%",
-        height: "56px",
-        marginTop: "8px",
-        backgroundColor: "var(--tellian-button)",
-        color: "var(--tellian-dark)",
-        border: "none",
-        borderRadius: 0,
-        cursor: loading ? "not-allowed" : "pointer",
-        opacity: loading ? 0.8 : 1,
-        fontFamily: "var(--font-inter), 'Inter', sans-serif",
-        fontSize: "11px",
+        fontFamily: sans,
+        fontSize: 11,
         fontWeight: 500,
         letterSpacing: "0.18em",
         textTransform: "uppercase",
+        color: C.dark,
+        backgroundColor: loading ? C.line : C.button,
+        border: `1px solid ${loading ? C.line : C.button}`,
+        borderRadius: 0,
+        padding: "16px 32px",
+        cursor: loading ? "not-allowed" : "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "10px",
-        transition: "background-color 300ms ease-out, opacity 300ms ease-out",
+        gap: 10,
+        minHeight: 52,
+        width: "100%",
+        transition: `background-color ${DURATION.fast}ms ease`,
+        outline: "none",
+        marginTop: 4,
+      }}
+      onMouseEnter={(e) => {
+        if (!loading) e.currentTarget.style.backgroundColor = C.buttonHover;
+      }}
+      onMouseLeave={(e) => {
+        if (!loading) e.currentTarget.style.backgroundColor = C.button;
       }}
     >
-      {loading && loadingLabel ? loadingLabel : label}
       {loading ? (
-        <Loader2 size={16} className="animate-spin" />
+        <>
+          <Spinner />
+          <span>{loadingLabel ?? label}</span>
+        </>
       ) : (
-        <ArrowRight size={16} />
+        <>
+          <span>{label}</span>
+          <span aria-hidden>→</span>
+        </>
       )}
     </button>
   );
@@ -1206,96 +1245,90 @@ function SubmitButton({
 function skipButtonStyle(loading: boolean): React.CSSProperties {
   return {
     width: "100%",
-    height: "48px",
-    marginTop: "12px",
+    minHeight: 48,
     background: "transparent",
-    border: "1px solid var(--tellian-line)",
-    color: "var(--tellian-stone)",
-    fontFamily: "var(--font-inter), 'Inter', sans-serif",
-    fontSize: "11px",
+    border: `1px solid ${C.line}`,
+    borderRadius: 0,
+    color: C.stone,
+    fontFamily: sans,
+    fontSize: 11,
     fontWeight: 500,
-    letterSpacing: "0.18em",
+    letterSpacing: "0.16em",
     textTransform: "uppercase",
     cursor: loading ? "not-allowed" : "pointer",
     opacity: loading ? 0.6 : 1,
+    outline: "none",
   };
 }
+
+const formStyle: React.CSSProperties = {
+  marginTop: 28,
+  display: "flex",
+  flexDirection: "column",
+  gap: 20,
+};
 
 const linkStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "6px",
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "11px",
-  fontWeight: 400,
+  gap: 6,
+  fontFamily: sans,
+  fontSize: 11,
   letterSpacing: "0.1em",
   textTransform: "uppercase",
-  color: "var(--tellian-stone)",
+  color: C.stone,
   textDecoration: "none",
   padding: "8px 0",
-  transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+  transition: `all ${DURATION.normal}ms ${EASE.standard}`,
 };
 
 const eyebrowStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "10px",
+  fontFamily: sans,
+  fontSize: EYEBROW_SIZE,
   fontWeight: 500,
   letterSpacing: "0.22em",
   textTransform: "uppercase",
-  color: "var(--tellian-stone)",
+  color: C.stone,
   display: "block",
 };
 
 const headlineStyle: React.CSSProperties = {
-  fontFamily: "var(--font-lustria), 'Lustria', serif",
-  fontSize: "clamp(28px, 6vw, 48px)",
-  fontWeight: 400,
-  letterSpacing: "-0.025em",
-  color: "var(--tellian-dark)",
-  margin: 0,
-  marginTop: "16px",
+  fontFamily: serif,
   lineHeight: 1.05,
+  color: C.dark,
+  letterSpacing: "-0.025em",
+  fontWeight: 400,
+  margin: "16px 0 0 0",
 };
 
-const subtextStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "15px",
-  fontWeight: 400,
-  color: "var(--tellian-charcoal)",
+const introStyle: React.CSSProperties = {
+  fontFamily: sans,
+  fontSize: 15,
+  color: C.charcoal,
   lineHeight: 1.6,
-  marginTop: "16px",
-  marginBottom: 0,
-  maxWidth: "360px",
-};
-
-const errorStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "13px",
-  fontWeight: 400,
-  color: "var(--tellian-error)",
-  marginTop: "16px",
-  marginBottom: 0,
+  margin: "16px 0 0 0",
+  maxWidth: 360,
 };
 
 const mutedLinkStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "11px",
-  fontWeight: 400,
+  fontFamily: sans,
+  fontSize: 11,
   letterSpacing: "0.1em",
   textTransform: "uppercase",
-  color: "var(--tellian-stone)",
+  color: C.stone,
   background: "transparent",
   textDecoration: "none",
   padding: "8px 0",
-  transition: "color 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+  textAlign: "left",
+  transition: `all ${DURATION.normal}ms ${EASE.standard}`,
 };
 
 const footerStyle: React.CSSProperties = {
-  fontFamily: "var(--font-inter), 'Inter', sans-serif",
-  fontSize: "9px",
+  fontFamily: sans,
+  fontSize: 9,
   fontWeight: 500,
   letterSpacing: "0.18em",
   textTransform: "uppercase",
-  color: "var(--tellian-stone)",
+  color: C.stone,
   whiteSpace: "nowrap",
 };

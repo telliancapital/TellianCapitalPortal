@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Loader2, Upload, X } from "lucide-react";
+import { C, sans } from "@/lib/tokens";
 import {
   ALLOWED_IMAGE_CONTENT_TYPES,
   MAX_PROFILE_IMAGE_BYTES,
@@ -16,6 +16,9 @@ interface ProfileImageUploadProps {
   invalidTypeMessage: string;
   tooLargeMessage: string;
   uploadFailedMessage: string;
+  uploadLabel?: string;
+  replaceLabel?: string;
+  removeLabel?: string;
 }
 
 export function ProfileImageUpload({
@@ -26,6 +29,9 @@ export function ProfileImageUpload({
   invalidTypeMessage,
   tooLargeMessage,
   uploadFailedMessage,
+  uploadLabel = "Upload",
+  replaceLabel = "Replace",
+  removeLabel = "Remove",
 }: ProfileImageUploadProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -96,13 +102,14 @@ export function ProfileImageUpload({
     <div>
       <label
         style={{
-          display: "block",
-          marginBottom: "8px",
-          fontFamily: "var(--font-inter), 'Inter', sans-serif",
-          fontSize: "13px",
+          fontFamily: sans,
+          fontSize: 11,
           fontWeight: 500,
-          letterSpacing: "0.05em",
-          color: "var(--tellian-stone)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: C.stone,
+          display: "block",
+          marginBottom: 6,
         }}
       >
         {label}
@@ -127,7 +134,7 @@ export function ProfileImageUpload({
               width: "48px",
               height: "48px",
               borderRadius: "50%",
-              backgroundColor: "var(--tellian-subtle)",
+              backgroundColor: C.subtle,
               flexShrink: 0,
             }}
           />
@@ -139,40 +146,62 @@ export function ProfileImageUpload({
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: "6px",
+            gap: 8,
             background: "transparent",
-            border: "1px solid var(--tellian-line)",
+            border: `1px solid ${C.line}`,
+            borderRadius: 2,
             padding: "0 14px",
-            height: "36px",
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "11px",
+            height: 36,
+            fontFamily: sans,
+            fontSize: 11,
+            fontWeight: 500,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
-            color: "var(--tellian-dark)",
+            color: C.dark,
             cursor: disabled || uploading ? "not-allowed" : "pointer",
             opacity: disabled || uploading ? 0.6 : 1,
+            outline: "none",
           }}
         >
           {uploading ? (
-            <Loader2 size={14} className="animate-spin" />
+            <span
+              aria-hidden
+              style={{
+                width: 12,
+                height: 12,
+                border: `2px solid ${C.stone}`,
+                borderTopColor: C.dark,
+                borderRadius: "50%",
+                animation: "portal-spin 0.8s linear infinite",
+                flexShrink: 0,
+              }}
+            />
           ) : (
-            <Upload size={14} />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
           )}
-          {imageKey ? "Replace" : "Upload"}
+          {imageKey ? replaceLabel : uploadLabel}
         </button>
         {imageKey && !uploading && (
           <button
             type="button"
             onClick={handleRemove}
-            aria-label="Remove"
+            aria-label={removeLabel}
             style={{
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              color: "var(--tellian-stone)",
+              color: C.stone,
+              padding: 8,
+              lineHeight: 0,
             }}
           >
-            <X size={16} />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </button>
         )}
         <input
@@ -187,10 +216,10 @@ export function ProfileImageUpload({
         <p
           role="alert"
           style={{
-            fontFamily: "var(--font-inter), 'Inter', sans-serif",
-            fontSize: "12px",
-            color: "var(--tellian-error)",
-            marginTop: "6px",
+            fontFamily: sans,
+            fontSize: 12,
+            color: C.error,
+            marginTop: 6,
           }}
         >
           {error}
