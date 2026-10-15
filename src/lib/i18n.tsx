@@ -7,38 +7,42 @@ export type Locale = "de" | "en";
 
 const translations = {
   // Login page
-  "login.eyebrow": { de: "Mandanten-Portal", en: "Client Portal" },
-  "login.staff.eyebrow": { de: "Mitarbeiter-Portal", en: "Staff Portal" },
+  "login.eyebrow": { de: "Kundenportal", en: "Client Portal" },
+  "login.staff.eyebrow": { de: "Mitarbeiter-Portal", en: "Employee Portal" },
   "login.headline": { de: "Willkommen zurück.", en: "Welcome back." },
   "login.subtext": {
     de: "Melden Sie sich an, um auf Ihre Performance-Reports und Quartalsberichte zuzugreifen.",
     en: "Sign in to access your performance reports and quarterly statements.",
   },
-  "login.customerId.label": { de: "Kunden-ID", en: "Customer ID" },
+  "login.customerId.label": { de: "Kunden-ID", en: "Client ID" },
   "login.customerId.placeholder": {
     de: "z. B. CUST-12345",
     en: "e.g. CUST-12345",
   },
   "login.email.label": { de: "E-Mail", en: "Email" },
   "login.email.placeholder": {
-    de: "z. B. name@tellian.com",
-    en: "e.g. name@tellian.com",
+    de: "name@telliancapital.ch",
+    en: "name@telliancapital.ch",
   },
   "login.altLink.staff": {
-    de: "Mitarbeiter-Anmeldung",
-    en: "Staff sign in",
+    de: "Mitarbeiter-Login",
+    en: "Employee login",
   },
   "login.altLink.customer": {
-    de: "Kunden-Anmeldung",
-    en: "Customer sign in",
+    de: "Kunden-Login",
+    en: "Client login",
   },
   "login.password.label": { de: "Passwort", en: "Password" },
   "login.submit": { de: "Anmelden", en: "Sign in" },
-  "login.loading": { de: "Wird geladen...", en: "Loading..." },
+  "login.loading": { de: "Wird angemeldet…", en: "Signing in…" },
   "login.forgot": { de: "Passwort vergessen?", en: "Forgot password?" },
   "login.error": {
-    de: "Kunden-ID oder Passwort ungültig.",
-    en: "Invalid customer ID or password.",
+    de: "Kunden-ID oder Passwort ist ungültig.",
+    en: "Client ID or password is invalid.",
+  },
+  "login.staff.error": {
+    de: "E-Mail oder Passwort ist ungültig.",
+    en: "Email or password is invalid.",
   },
   // Challenges
   "challenge.newPassword.headline": {
@@ -152,47 +156,72 @@ const translations = {
     de: "FINMA-lizenziert · Zürich",
     en: "FINMA-licensed · Zurich",
   },
-  "login.back": { de: "Zurück", en: "Back" },
+  "login.back": { de: "Zurück zur Hauptseite", en: "Back to main site" },
 
   // Portal layout
   "portal.logout": { de: "Abmelden", en: "Sign out" },
   "portal.admin": { de: "Benutzer Management", en: "User Management" },
-  "portal.nav.reports": { de: "Ihre Berichte", en: "Your Reports" },
+  "portal.nav.reports": { de: "Ihre Dokumente", en: "Your Documents" },
+  "portal.nav.account": { de: "Konto", en: "Account" },
+  "portal.nav.clientId": { de: "Kunden-ID", en: "Client ID" },
   "portal.nav.userManagement": {
     de: "Benutzerverwaltung",
     en: "User Management",
   },
 
   // Admin page
-  "admin.headline": { de: "Benutzerverwaltung", en: "User Management." },
+  "admin.headline": { de: "Benutzerverwaltung.", en: "User Management." },
   "admin.subtext": {
-    de: "Verwalten Sie Kunden, Mitarbeiter und Administratoren.",
+    de: "Mandanten, Mitarbeitende und Administratoren verwalten.",
     en: "Manage clients, employees and administrators.",
   },
   "admin.create": { de: "Benutzer erstellen", en: "Create user" },
-  "admin.col.id": { de: "ID", en: "ID" },
+  "admin.col.id": { de: "Kunden-ID", en: "Client ID" },
   "admin.col.name": { de: "Name", en: "Name" },
   "admin.col.role": { de: "Rolle", en: "Role" },
   "admin.col.status": { de: "Status", en: "Status" },
   "admin.col.mfa": { de: "MFA", en: "MFA" },
   "admin.col.actions": { de: "Aktionen", en: "Actions" },
-  "admin.status.enabled": { de: "Aktiv", en: "Enabled" },
-  "admin.status.disabled": { de: "Deaktiviert", en: "Disabled" },
-  "admin.mfa.on": { de: "EIN", en: "ON" },
-  "admin.mfa.off": { de: "AUS", en: "OFF" },
-  "admin.action.disable": { de: "Deaktivieren", en: "Disable" },
-  "admin.action.enable": { de: "Aktivieren", en: "Enable" },
+  "admin.status.enabled": { de: "Aktiv", en: "Active" },
+  "admin.status.pending": { de: "Ausstehend", en: "Pending" },
+  "admin.status.disabled": { de: "Inaktiv", en: "Inactive" },
+  "admin.mfa.on": { de: "Ein", en: "On" },
+  "admin.mfa.off": { de: "Aus", en: "Off" },
+  "admin.role.Admin": { de: "Administrator", en: "Administrator" },
+  "admin.role.User": { de: "Mandant", en: "Client" },
+  "admin.role.InternalEmployee": { de: "Interner Mitarbeiter", en: "Internal Employee" },
+  "admin.action.disable": { de: "Deaktivieren", en: "Deactivate" },
+  "admin.action.enable": { de: "Aktivieren", en: "Activate" },
   "admin.action.changeRole": { de: "Rolle ändern", en: "Change role" },
   "admin.action.edit": { de: "Bearbeiten", en: "Edit" },
   "admin.modal.title": {
     de: "Neuen Benutzer erstellen",
     en: "Create new user",
   },
+  "admin.modal.subtitle": {
+    de: "Alle Pflichtfelder ausfüllen. Das temporäre Passwort wird automatisch generiert.",
+    en: "Fill in all required fields. The temporary password is generated automatically.",
+  },
+  "admin.modal.editSubtitle": {
+    de: "Profildaten des Benutzers anpassen.",
+    en: "Update the user's profile details.",
+  },
+  "admin.modal.customerId.placeholder": {
+    de: "z.\u00A0B. CUST-20001",
+    en: "e.g. CUST-20001",
+  },
+  "admin.modal.generate": { de: "Neu generieren", en: "Regenerate" },
+  "admin.modal.copy": { de: "Kopieren", en: "Copy" },
+  "admin.modal.copied": { de: "Kopiert", en: "Copied" },
+  "admin.modal.rmNone": { de: "Keinen RM zuordnen", en: "No RM assigned" },
+  "admin.modal.image.upload": { de: "Hochladen", en: "Upload" },
+  "admin.modal.image.replace": { de: "Ersetzen", en: "Replace" },
+  "admin.modal.image.remove": { de: "Entfernen", en: "Remove" },
   "admin.modal.editTitle": {
     de: "Benutzer bearbeiten",
     en: "Edit user",
   },
-  "admin.modal.customerId": { de: "Kunden-ID", en: "Customer ID" },
+  "admin.modal.customerId": { de: "Kunden-ID", en: "Client ID" },
   "admin.modal.userId": { de: "Benutzer-ID", en: "User ID" },
   "admin.modal.email": { de: "E-Mail", en: "Email" },
   "admin.modal.role": { de: "Rolle", en: "Role" },
@@ -200,20 +229,20 @@ const translations = {
     de: "Temporäres Passwort",
     en: "Temporary password",
   },
-  "admin.modal.phone": { de: "Telefonnummer", en: "Phone number" },
+  "admin.modal.phone": { de: "Telefon", en: "Phone" },
   "admin.modal.firstName": { de: "Vorname", en: "First name" },
   "admin.modal.lastName": { de: "Nachname", en: "Last name" },
-  "admin.modal.street": { de: "Strasse", en: "Street" },
-  "admin.modal.city": { de: "Stadt", en: "City" },
-  "admin.modal.zipCode": { de: "PLZ", en: "Zip code" },
+  "admin.modal.street": { de: "Adresse", en: "Address" },
+  "admin.modal.city": { de: "Ort", en: "City" },
+  "admin.modal.zipCode": { de: "PLZ", en: "ZIP" },
   "admin.modal.assignedRm": {
-    de: "Relationship Manager",
-    en: "Relationship Manager",
+    de: "Zugeordneter RM",
+    en: "Assigned RM",
   },
   "admin.modal.profileImage": { de: "Profilbild", en: "Profile image" },
   "admin.modal.fieldRequired": {
-    de: "Dieses Feld ist erforderlich.",
-    en: "This field is required.",
+    de: "Pflichtfeld",
+    en: "Required",
   },
   "admin.modal.image.invalidType": {
     de: "Bitte JPEG, PNG oder WebP verwenden.",
@@ -229,23 +258,38 @@ const translations = {
   },
   "admin.modal.cancel": { de: "Abbrechen", en: "Cancel" },
   "admin.modal.submit": { de: "Erstellen", en: "Create" },
+  "admin.modal.creating": { de: "Wird erstellt…", en: "Creating…" },
+  "admin.modal.saving": { de: "Wird gespeichert…", en: "Saving…" },
   "admin.modal.save": { de: "Speichern", en: "Save" },
   "admin.created": {
     de: "Benutzer erstellt. Temporäres Passwort:",
     en: "User created. Temporary password:",
   },
   "admin.toast.created.title": {
-    de: "Benutzer erfolgreich erstellt",
-    en: "User created successfully",
+    de: "Benutzer {id} wurde erstellt.",
+    en: "User {id} has been created.",
+  },
+  "admin.created.headline": {
+    de: "Benutzer erstellt",
+    en: "User created",
+  },
+  "admin.created.body": {
+    de: "Das temporäre Passwort für {id} wurde erstellt. Senden Sie es dem Benutzer über einen sicheren Kanal. Es wird nach dem Schliessen dieses Dialogs nicht mehr angezeigt.",
+    en: "The temporary password for {id} has been created. Send it to the user through a secure channel. It will not be shown again after closing this dialog.",
   },
   "admin.toast.createFailed.fallback": {
     de: "Unerwarteter Fehler beim Erstellen des Benutzers.",
     en: "An unexpected error occurred while creating the user.",
   },
   "admin.toast.updated.title": {
-    de: "Benutzer erfolgreich aktualisiert",
-    en: "User updated successfully",
+    de: "Benutzer {id} wurde aktualisiert.",
+    en: "User {id} has been updated.",
   },
+  "admin.toast.deactivated": { de: "{id} deaktiviert.", en: "{id} deactivated." },
+  "admin.toast.activated": { de: "{id} aktiviert.", en: "{id} activated." },
+  "admin.toast.mfaEnabled": { de: "MFA für {id} aktiviert.", en: "MFA for {id} enabled." },
+  "admin.toast.mfaDisabled": { de: "MFA für {id} deaktiviert.", en: "MFA for {id} disabled." },
+  "admin.toast.roleChanged": { de: "Rolle für {id} geändert: {role}", en: "Role for {id} changed: {role}" },
   "admin.toast.updateFailed.fallback": {
     de: "Unerwarteter Fehler beim Aktualisieren des Benutzers.",
     en: "An unexpected error occurred while updating the user.",
@@ -255,26 +299,55 @@ const translations = {
     en: "Username",
   },
   "admin.modal.done": {
-    de: "Fertig",
-    en: "Done",
+    de: "Schliessen",
+    en: "Close",
   },
   "admin.action.impersonate": {
     de: "Als Benutzer anmelden",
-    en: "Login as user",
+    en: "Sign in as user",
   },
   "admin.action.resetPassword": {
     de: "Passwort zurücksetzen",
     en: "Reset password",
   },
-  "admin.action.mfaEnable": { de: "MFA Aktivieren", en: "Enable MFA" },
-  "admin.action.mfaDisable": { de: "MFA Deaktivieren", en: "Disable MFA" },
+  "admin.action.mfaEnable": { de: "MFA aktivieren", en: "Enable MFA" },
+  "admin.action.mfaDisable": { de: "MFA deaktivieren", en: "Disable MFA" },
   "admin.resetPassword.notice": {
-    de: "Passwort zurückgesetzt. Temporäres Passwort:",
-    en: "Password reset. Temporary password:",
+    de: "Neues temporäres Passwort",
+    en: "New temporary password",
   },
+  "admin.resetPassword.body": {
+    de: "Das temporäre Passwort für {id} wurde erstellt. Senden Sie es dem Mandanten über einen sicheren Kanal. Es wird nach dem Schliessen dieses Dialogs nicht mehr angezeigt.",
+    en: "The temporary password for {id} has been created. Send it to the client through a secure channel. It will not be shown again after closing this dialog.",
+  },
+  "admin.confirm.deactivateTitle": { de: "Benutzer deaktivieren", en: "Deactivate user" },
+  "admin.confirm.deactivateBody": {
+    de: "Möchten Sie das Konto {id} wirklich deaktivieren?",
+    en: "Do you really want to deactivate account {id}?",
+  },
+  "admin.confirm.activateTitle": { de: "Benutzer aktivieren", en: "Activate user" },
+  "admin.confirm.activateBody": {
+    de: "Möchten Sie das Konto {id} reaktivieren?",
+    en: "Do you want to reactivate account {id}?",
+  },
+  "admin.confirm.resetTitle": { de: "Passwort zurücksetzen", en: "Reset password" },
+  "admin.confirm.resetBody": {
+    de: "Ein neues temporäres Passwort wird für {id} erstellt. Der Mandant muss beim nächsten Login ein neues Passwort festlegen.",
+    en: "A new temporary password will be created for {id}. The client must set a new password on next login.",
+  },
+  "admin.confirm.impersonateTitle": { de: "Als Benutzer anmelden", en: "Sign in as user" },
+  "admin.confirm.impersonateBody": {
+    de: "Sie werden das Portal als {id} sehen. Alle Aktionen werden protokolliert.",
+    en: "You will see the portal as {id}. All actions will be logged.",
+  },
+  "admin.confirm.cancel": { de: "Abbrechen", en: "Cancel" },
+  "admin.confirm.confirm": { de: "Bestätigen", en: "Confirm" },
+  "admin.table.empty": { de: "Keine Benutzer gefunden.", en: "No users found." },
+  "admin.table.loading": { de: "Wird geladen…", en: "Loading…" },
+  "admin.table.error": { de: "Fehler beim Laden der Benutzer.", en: "Error loading users." },
   "admin.search.placeholder": {
-    de: "Benutzer suchen...",
-    en: "Search users...",
+    de: "Suchen nach ID, Name, E-Mail…",
+    en: "Search by ID, name, email…",
   },
   "admin.filter.role.label": {
     de: "Nach Rolle filtern",
@@ -288,8 +361,8 @@ const translations = {
 
   // Impersonation
   "impersonation.banner": {
-    de: "Sie sehen das Portal als {target}.",
-    en: "You are viewing the portal as {target}.",
+    de: "Sie sehen das Portal als {target}",
+    en: "You are viewing the portal as {target}",
   },
   "impersonation.exit": {
     de: "Impersonation beenden",
@@ -307,11 +380,19 @@ const translations = {
     en: "No RM assigned yet.",
   },
   "docs.profile.address": { de: "Adresse", en: "Address" },
-  "docs.headline": { de: "Ihre Berichte.", en: "Your Reports." },
+  "docs.headline": { de: "Ihre Dokumente.", en: "Your Documents." },
   "docs.count": {
     de: "{n} Dokumente verfügbar",
     en: "{n} documents available",
   },
+  "docs.countOne": {
+    de: "1 Dokument verfügbar",
+    en: "1 document available",
+  },
+  "docs.rm.contact": { de: "Kontakt aufnehmen", en: "Get in touch" },
+  "docs.rm.noPhoto": { de: "Kein Foto verfügbar", en: "No photo available" },
+  "docs.loading": { de: "Berichte werden geladen…", en: "Loading reports…" },
+  "docs.error": { de: "Fehler beim Laden der Berichte.", en: "Error loading reports." },
   "docs.countMore": {
     de: "{n}+ Dokumente verfügbar",
     en: "{n}+ documents available",
@@ -319,8 +400,8 @@ const translations = {
   "docs.loadMore": { de: "Mehr laden", en: "Load more" },
   "docs.download": { de: "Herunterladen", en: "Download" },
   "docs.search.placeholder": {
-    de: "Berichte suchen...",
-    en: "Search reports...",
+    de: "Berichte suchen…",
+    en: "Search reports…",
   },
   "docs.col.title": { de: "Titel", en: "Title" },
   "docs.col.date": { de: "Datum", en: "Date" },
@@ -335,8 +416,8 @@ const translations = {
     en: "Page {current} of {total}",
   },
   "docs.empty.headline": {
-    de: "Keine Berichte verfügbar.",
-    en: "No reports available.",
+    de: "Noch keine Berichte verfügbar.",
+    en: "No reports available yet.",
   },
   "docs.empty.subtitle": {
     de: "Sobald neue Dokumente bereitstehen, werden sie hier angezeigt.",
@@ -357,24 +438,24 @@ const translations = {
 
   // Validation
   "validation.customerId.required": {
-    de: "Kunden-ID ist erforderlich.",
-    en: "Customer ID is required.",
+    de: "Pflichtfeld",
+    en: "Required",
   },
   "validation.customerId.invalid": {
-    de: "Bitte geben Sie eine gültige Kunden-ID ein",
-    en: "Please enter a valid customer ID.",
+    de: "Ungültige Kunden-ID",
+    en: "Invalid client ID",
   },
   "validation.email.required": {
-    de: "E-Mail-Adresse ist erforderlich.",
-    en: "Email address is required.",
+    de: "Pflichtfeld",
+    en: "Required",
   },
   "validation.email.invalid": {
-    de: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
-    en: "Please enter a valid email address.",
+    de: "Ungültige E-Mail-Adresse",
+    en: "Invalid email address",
   },
   "validation.password.required": {
-    de: "Passwort ist erforderlich.",
-    en: "Password is required.",
+    de: "Pflichtfeld",
+    en: "Required",
   },
   "validation.password.policy": {
     de: "Mindestens 8 Zeichen mit Gross-/Kleinbuchstaben, Zahl und Sonderzeichen.",
@@ -410,7 +491,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       let text: string = entry[locale] ?? entry.de;
       if (vars) {
         for (const [k, v] of Object.entries(vars)) {
-          text = text.replace(`{${k}}`, String(v));
+          text = text.split(`{${k}}`).join(String(v));
         }
       }
       return text;

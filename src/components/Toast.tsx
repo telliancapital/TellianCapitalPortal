@@ -10,7 +10,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AlertCircle, Check, Info, X } from "lucide-react";
+import { C, sans } from "@/lib/tokens";
+
+/* ═══════════════════════════════════════════════════════════
+   FEEDBACK TOAST — bottom-centred flash (design AdminPage).
+   aria-live, auto-dismiss, one specific line per message.
+   ═══════════════════════════════════════════════════════════ */
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -63,7 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const record: ToastRecord = { id, variant, title, ...options };
       setToasts((prev) => [...prev, record]);
 
-      const defaultDuration = variant === "error" ? 8000 : 5000;
+      const defaultDuration = variant === "error" ? 6000 : 3000;
       const duration =
         options?.duration !== undefined ? options.duration : defaultDuration;
 
@@ -98,25 +103,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
+        aria-atomic="true"
         style={{
           position: "fixed",
-          top: "24px",
-          right: "24px",
-          zIndex: 1000,
+          bottom: 24,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 20000,
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
-          maxWidth: "440px",
-          width: "calc(100% - 48px)",
+          alignItems: "center",
+          gap: 8,
+          maxWidth: "calc(100vw - 48px)",
           pointerEvents: "none",
         }}
       >
         {toasts.map((toast) => (
-          <ToastItem
-            key={toast.id}
-            toast={toast}
-            onDismiss={() => dismiss(toast.id)}
-          />
+          <ToastItem key={toast.id} toast={toast} onDismiss={() => dismiss(toast.id)} />
         ))}
       </div>
     </ToastContext.Provider>
@@ -130,78 +133,48 @@ function ToastItem({
   toast: ToastRecord;
   onDismiss: () => void;
 }) {
-  const accent = "var(--tellian-dark)";
-  const surface = "var(--tellian-bg)";
-
-  const Icon =
+  const palette =
     toast.variant === "success"
-      ? Check
+      ? { bg: C.successBg, border: C.success }
       : toast.variant === "error"
-        ? AlertCircle
-        : Info;
+        ? { bg: C.errorBg, border: C.error }
+        : { bg: C.bg, border: C.line };
 
   return (
     <div
       role={toast.variant === "error" ? "alert" : "status"}
+      onClick={onDismiss}
       style={{
-        backgroundColor: surface,
-        border: "1px solid var(--tellian-line)",
-        borderLeft: `3px solid ${accent}`,
-        padding: "14px 16px",
-        fontFamily: "var(--font-inter), 'Inter', sans-serif",
-        boxShadow: "var(--tellian-shadow-md)",
-        display: "flex",
-        gap: "12px",
+        fontFamily: sans,
+        fontSize: 13,
+        fontWeight: 500,
+        color: C.dark,
+        backgroundColor: palette.bg,
+        border: `1px solid ${palette.border}`,
+        borderRadius: 6,
+        padding: "12px 24px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         pointerEvents: "auto",
+        cursor: "pointer",
+        textAlign: "center",
+        lineHeight: 1.5,
       }}
     >
-      <Icon
-        size={18}
-        style={{ color: accent, flexShrink: 0, marginTop: "2px" }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
+      {toast.title}
+      {toast.description && (
+        <span
           style={{
-            fontSize: "14px",
-            fontWeight: 500,
-            color: "var(--tellian-dark)",
-            lineHeight: 1.4,
+            display: "block",
+            marginTop: 4,
+            fontSize: 12,
+            fontWeight: 400,
+            color: C.charcoal,
+            wordBreak: "break-word",
           }}
         >
-          {toast.title}
-        </div>
-        {toast.description && (
-          <div
-            style={{
-              marginTop: "4px",
-              fontSize: "13px",
-              color: "var(--tellian-charcoal)",
-              lineHeight: 1.5,
-              wordBreak: "break-word",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {toast.description}
-          </div>
-        )}
-      </div>
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={onDismiss}
-        style={{
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--tellian-stone)",
-          padding: "4px",
-          margin: "-4px",
-          alignSelf: "flex-start",
-          lineHeight: 0,
-        }}
-      >
-        <X size={16} />
-      </button>
+          {toast.description}
+        </span>
+      )}
     </div>
   );
 }
