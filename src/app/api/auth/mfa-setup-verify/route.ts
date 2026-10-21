@@ -9,6 +9,7 @@ import {
 import { cognito, getClientId } from "@/lib/cognito";
 import { assertRoleForMode, isLoginMode, type LoginMode } from "@/lib/loginRole";
 import { setSessionCookie } from "@/lib/session";
+import { recordLogin } from "@/lib/activation";
 
 interface VerifyBody {
   session?: string;
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
       accessToken: auth.AccessToken,
       expiresAt: Date.now() + (auth.ExpiresIn ?? 3600) * 1000,
     });
+    void recordLogin(customerId);
 
     return NextResponse.json({ status: "OK" });
   } catch (err) {

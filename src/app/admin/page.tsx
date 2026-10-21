@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { C, sans, serif, selectChevron } from "@/lib/tokens";
 import { DURATION } from "@/lib/motion";
+import type { ActivationState } from "@/lib/activation";
 
 /* ═══════════════════════════════════════════════════════════
    ADMIN PAGE — Benutzerverwaltung
@@ -38,15 +39,36 @@ interface AdminUser {
   zipCode?: string;
   assignedRm?: string;
   createdAt?: string;
+  activation?: ActivationState | null;
 }
 
 type ConfirmAction =
   | { type: "deactivate"; user: AdminUser }
   | { type: "activate"; user: AdminUser }
   | { type: "resetPassword"; user: AdminUser }
+  | { type: "resendActivation"; user: AdminUser }
   | { type: "impersonate"; user: AdminUser };
 
 type AccountStatus = "active" | "pending" | "inactive";
+
+/* Activation link result (create / resend) — shown once in a dialog. */
+interface ActivationResult {
+  username: string;
+  email: string;
+  link: string | null;
+  emailStatus: "SENT" | "FAILED" | "NOT_SENT";
+  ttlHours: number;
+}
+
+function formatDateTime(iso: string | null | undefined, locale: string): string {
+  if (!iso) return "—";
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return "—";
+  return new Date(ts).toLocaleString(locale === "de" ? "de-CH" : "en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 function getDisplayName(u: AdminUser): string {
   const full = [u.firstName, u.lastName].filter(Boolean).join(" ");
@@ -252,6 +274,8 @@ function AdminContent() {
   const [confirmBusy, setConfirmBusy] = useState(false);
   /* Generated password shown once after a reset — dialog with copy button */
   const [resetPwResult, setResetPwResult] = useState<{ username: string; tempPw: string } | null>(null);
+  /* New activation link after a resend — dialog with copy button */
+  const [activationResult, setActivationResult] = useState<ActivationResult | null>(null);
   const pageSize = 10;
 
   const isInternal = user?.groups.includes("InternalEmployee") ?? false;
@@ -385,6 +409,35 @@ function AdminContent() {
     void loadUsers();
   }
 
+  async function handleResendActivation(u: AdminUser) {
+    setError(null);
+    const res = await fetch("/api/admin/resend-activation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u.username }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      email?: string;
+      activationLink?: string | null;
+      activationEmail?: ActivationResult["emailStatus"];
+      ttlHours?: number;
+    };
+    if (!res.ok) {
+      toast.error(data.error ?? "Failed to resend activation link");
+      return;
+    }
+    toast.success(t("admin.toast.resent", { id: getDisplayId(u) }));
+    setActivationResult({
+      username: u.username,
+      email: data.email ?? u.email ?? "",
+      link: data.activationLink ?? null,
+      emailStatus: data.activationEmail ?? "NOT_SENT",
+      ttlHours: data.ttlHours ?? 48,
+    });
+    void loadUsers();
+  }
+
   async function handleToggleMfa(u: AdminUser) {
     // Optimistic update
     setUsers((prev) =>
@@ -422,6 +475,7 @@ function AdminContent() {
     try {
       if (type === "deactivate" || type === "activate") await handleToggleEnabled(target);
       else if (type === "resetPassword") await handleResetPassword(target);
+      else if (type === "resendActivation") await handleResendActivation(target);
       else if (type === "impersonate") await handleImpersonate(target);
     } finally {
       setConfirmBusy(false);
@@ -436,7 +490,9 @@ function AdminContent() {
         ? t("admin.confirm.activateTitle")
         : confirm.type === "resetPassword"
           ? t("admin.confirm.resetTitle")
-          : t("admin.confirm.impersonateTitle")
+          : confirm.type === "resendActivation"
+            ? t("admin.confirm.resendTitle")
+            : t("admin.confirm.impersonateTitle")
     : "";
   const confirmBody = confirm
     ? confirm.type === "deactivate"
@@ -445,7 +501,9 @@ function AdminContent() {
         ? t("admin.confirm.activateBody", { id: getDisplayId(confirm.user) })
         : confirm.type === "resetPassword"
           ? t("admin.confirm.resetBody", { id: getDisplayId(confirm.user) })
-          : t("admin.confirm.impersonateBody", { id: getDisplayId(confirm.user) })
+          : confirm.type === "resendActivation"
+            ? t("admin.confirm.resendBody", { id: getDisplayId(confirm.user) })
+            : t("admin.confirm.impersonateBody", { id: getDisplayId(confirm.user) })
     : "";
 
   if (loading || !user || !canViewUsers) {
@@ -468,10 +526,13 @@ function AdminContent() {
       canManage: canManageUsers,
       canImpersonate: canImpersonateUsers,
       canImpersonateRow: canImpersonateUsers && !isSelf && u.enabled && role !== "Admin",
+      canResendRow:
+        canManageUsers && role === "User" && u.enabled && u.activation?.stage !== "completed",
       onEdit: () => setEditingUser(u),
       onToggle: () => setConfirm({ type: u.enabled ? "deactivate" : "activate", user: u }),
       onToggleMfa: () => handleToggleMfa(u),
       onResetPw: () => setConfirm({ type: "resetPassword", user: u }),
+      onResend: () => setConfirm({ type: "resendActivation", user: u }),
       onImpersonate: () => setConfirm({ type: "impersonate", user: u }),
       onChangeRole: (r: Role) => handleChangeRole(u, r),
       t,
@@ -633,6 +694,7 @@ function AdminContent() {
                       t("admin.col.role"),
                       t("admin.col.status"),
                       t("admin.col.mfa"),
+                      t("admin.col.activation"),
                       ...(showActionsColumn ? [t("admin.col.actions")] : []),
                     ].map((col, i) => (
                       <th
@@ -734,7 +796,46 @@ function AdminContent() {
           t={t}
         />
       )}
+
+      {/* ── RESENT ACTIVATION LINK — shown once ── */}
+      {activationResult && (
+        <ActivationLinkDialog
+          title={t("admin.resend.headline")}
+          result={activationResult}
+          onClose={() => setActivationResult(null)}
+          t={t}
+        />
+      )}
     </>
+  );
+}
+
+/* Create/resend result: the link is the credential here. Emailed or not,
+   the admin can always copy it. */
+function ActivationLinkDialog({
+  title,
+  result,
+  onClose,
+  t,
+}: {
+  title: string;
+  result: ActivationResult;
+  onClose: () => void;
+  t: T;
+}) {
+  const vars = { id: result.username, email: result.email, hours: result.ttlHours };
+  return (
+    <CredentialsDialog
+      title={title}
+      body={
+        result.emailStatus === "SENT"
+          ? t("admin.created.customerBody", vars)
+          : t("admin.created.customerBodyNotSent", vars)
+      }
+      fields={result.link ? [{ label: t("admin.activation.linkLabel"), value: result.link }] : []}
+      onClose={onClose}
+      t={t}
+    />
   );
 }
 
@@ -749,11 +850,13 @@ interface RowProps {
   canManage: boolean;
   canImpersonate: boolean;
   canImpersonateRow: boolean;
+  canResendRow: boolean;
   showActions: boolean;
   onEdit: () => void;
   onToggle: () => void;
   onToggleMfa: () => void;
   onResetPw: () => void;
+  onResend: () => void;
   onImpersonate: () => void;
   onChangeRole: (r: Role) => void;
   t: T;
@@ -807,6 +910,9 @@ function UserTableRow(props: RowProps) {
       <td style={td}>
         <MfaBadge user={user} t={props.t} />
       </td>
+      <td style={td}>
+        <ActivationCell user={user} role={props.role} t={props.t} />
+      </td>
       {showActions && (
         <td style={{ padding: "14px 0", verticalAlign: "middle" }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -852,6 +958,10 @@ function UserCard(props: RowProps) {
           <span style={metaLabel}>{t("admin.col.mfa")}</span>
           <MfaBadge user={user} t={t} />
         </div>
+        <div>
+          <span style={metaLabel}>{t("admin.col.activation")}</span>
+          <ActivationCell user={user} role={props.role} t={t} />
+        </div>
       </div>
       {showActions && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
@@ -868,10 +978,12 @@ function ActionButtons({
   canManage,
   canImpersonate,
   canImpersonateRow,
+  canResendRow,
   onEdit,
   onToggle,
   onToggleMfa,
   onResetPw,
+  onResend,
   onImpersonate,
   t,
 }: RowProps) {
@@ -881,6 +993,15 @@ function ActionButtons({
       {canManage && (
         <button onClick={onEdit} style={actionBtnStyle()} aria-label={`${t("admin.action.edit")}: ${id}`}>
           {t("admin.action.edit")}
+        </button>
+      )}
+      {canResendRow && (
+        <button
+          onClick={onResend}
+          style={actionBtnStyle()}
+          aria-label={`${t("admin.action.resendActivation")}: ${id}`}
+        >
+          {t("admin.action.resendActivation")}
         </button>
       )}
       {canManage && (
@@ -959,6 +1080,56 @@ function StatusBadge({ user, t }: { user: AdminUser; t: T }) {
           (PW)
         </span>
       )}
+    </span>
+  );
+}
+
+/* Activation progress (customers) + last sign-in (everyone). Stage comes
+   from the custom:act* attributes read by /api/admin/users. */
+function ActivationCell({ user, role, t }: { user: AdminUser; role: Role; t: T }) {
+  const { locale } = useI18n();
+  const a = user.activation ?? null;
+  const stage = a?.stage ?? "none";
+  const isCustomer = role === "User";
+
+  const stageColor =
+    stage === "completed"
+      ? C.success
+      : stage === "expired" || a?.emailStatus === "FAILED"
+        ? C.error
+        : stage === "none"
+          ? C.stone
+          : C.warning;
+
+  const metaLine =
+    a?.lastLoginAt
+      ? t("admin.activation.lastLogin", { date: formatDateTime(a.lastLoginAt, locale) })
+      : isCustomer && a?.expiresAt && (stage === "sent" || stage === "opened" || stage === "verified")
+        ? t("admin.activation.expires", { date: formatDateTime(a.expiresAt, locale) })
+        : t("admin.activation.neverLoggedIn");
+
+  const stageLabel = isCustomer ? t(`admin.activation.${stage}`) : null;
+  const emailNote =
+    isCustomer && stage !== "completed" && stage !== "none"
+      ? a?.emailStatus === "FAILED"
+        ? t("admin.activation.emailFailed")
+        : a?.emailStatus === "NOT_SENT"
+          ? t("admin.activation.emailNotSent")
+          : null
+      : null;
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      {stageLabel && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: sans, fontSize: 13, color: C.dark }}>
+          <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: stageColor, flexShrink: 0 }} />
+          {stageLabel}
+          {emailNote && (
+            <span style={{ fontSize: 10, color: C.error, fontWeight: 500, marginLeft: 2 }}>({emailNote})</span>
+          )}
+        </span>
+      )}
+      <span style={{ fontFamily: sans, fontSize: 11, color: C.stone, whiteSpace: "nowrap" }}>{metaLine}</span>
     </span>
   );
 }
@@ -1149,11 +1320,11 @@ function CreateUserModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    username: string;
-    temporaryPassword: string;
-    role: Role;
-  } | null>(null);
+  const [result, setResult] = useState<
+    | { kind: "staff"; username: string; temporaryPassword: string }
+    | { kind: "customer"; activation: ActivationResult }
+    | null
+  >(null);
 
   const isStaff = role === "Admin" || role === "InternalEmployee";
   const rmCandidates = users.filter(
@@ -1210,9 +1381,8 @@ function CreateUserModal({
     if (!lastName.trim()) errors.lastName = required;
     if (!phoneNumber.trim()) errors.phoneNumber = required;
     if (!profileImageKey) errors.profileImage = required;
-    if (isStaff) {
-      if (!email.trim()) errors.email = required;
-    } else {
+    if (!email.trim()) errors.email = required;
+    if (!isStaff) {
       if (!customerId.trim()) errors.customerId = required;
       if (!street.trim()) errors.street = required;
       if (!city.trim()) errors.city = required;
@@ -1243,14 +1413,13 @@ function CreateUserModal({
           assignedRm?: string;
         } = {
           username: editUser.username,
+          email: email.trim(),
           phoneNumber: phoneNumber.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           profileImageKey,
         };
-        if (isStaff) {
-          payload.email = email.trim();
-        } else {
+        if (!isStaff) {
           payload.street = street.trim();
           payload.city = city.trim();
           payload.zipCode = zipCode.trim();
@@ -1293,15 +1462,14 @@ function CreateUserModal({
         assignedRm?: string;
       } = {
         role,
-        temporaryPassword: tempPassword || undefined,
+        temporaryPassword: isStaff ? tempPassword || undefined : undefined,
+        email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         profileImageKey,
       };
-      if (isStaff) {
-        payload.email = email.trim();
-      } else {
+      if (!isStaff) {
         payload.customerId = customerId.trim();
         payload.street = street.trim();
         payload.city = city.trim();
@@ -1318,6 +1486,9 @@ function CreateUserModal({
         error?: string;
         username?: string;
         temporaryPassword?: string;
+        activationLink?: string | null;
+        activationEmail?: ActivationResult["emailStatus"];
+        ttlHours?: number;
       };
       if (!res.ok) {
         const message = data.error?.trim() || t("admin.toast.createFailed.fallback");
@@ -1329,11 +1500,24 @@ function CreateUserModal({
 
       const createdId = isStaff ? email.trim() : (data.username ?? customerId.trim());
       toast.success(t("admin.toast.created.title", { id: createdId }));
-      setResult({
-        username: data.username ?? "",
-        temporaryPassword: data.temporaryPassword ?? tempPassword,
-        role,
-      });
+      if (isStaff) {
+        setResult({
+          kind: "staff",
+          username: data.username ?? "",
+          temporaryPassword: data.temporaryPassword ?? tempPassword,
+        });
+      } else {
+        setResult({
+          kind: "customer",
+          activation: {
+            username: data.username ?? customerId.trim(),
+            email: email.trim(),
+            link: data.activationLink ?? null,
+            emailStatus: data.activationEmail ?? "NOT_SENT",
+            ttlHours: data.ttlHours ?? 48,
+          },
+        });
+      }
       setSubmitting(false);
       onCreated();
     } catch (err) {
@@ -1345,7 +1529,17 @@ function CreateUserModal({
     }
   }
 
-  if (result) {
+  if (result?.kind === "customer") {
+    return (
+      <ActivationLinkDialog
+        title={t("admin.created.headline")}
+        result={result.activation}
+        onClose={onClose}
+        t={t}
+      />
+    );
+  }
+  if (result?.kind === "staff") {
     return (
       <CredentialsDialog
         title={t("admin.created.headline")}
@@ -1437,20 +1631,9 @@ function CreateUserModal({
               </select>
             </div>
 
-            {/* Identity: Client ID (clients) / Email (staff) */}
-            {isStaff ? (
-              <FloatingField
-                id="modal-email"
-                label={t("admin.modal.email")}
-                type="email"
-                required
-                value={email}
-                onChange={setEmail}
-                error={fieldErrors.email}
-                disabled={submitting}
-                autoComplete="off"
-              />
-            ) : (
+            {/* Identity: Client ID (clients only) + Email (everyone —
+                customers receive their activation link there) */}
+            {!isStaff && (
               <FloatingField
                 id="modal-customerId"
                 label={t("admin.modal.customerId")}
@@ -1463,9 +1646,21 @@ function CreateUserModal({
                 autoComplete="off"
               />
             )}
+            <FloatingField
+              id="modal-email"
+              label={t("admin.modal.email")}
+              type="email"
+              required
+              value={email}
+              onChange={setEmail}
+              error={fieldErrors.email}
+              disabled={submitting}
+              autoComplete="off"
+            />
 
-            {/* Temporary password — generated, not typed */}
-            {!isEdit && (
+            {/* Temporary password — generated, not typed. Customers set
+                their own password through the activation link instead. */}
+            {!isEdit && isStaff && (
               <div>
                 <label style={labelStyle}>{t("admin.modal.tempPassword")}</label>
                 <div

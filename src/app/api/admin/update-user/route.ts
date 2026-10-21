@@ -127,6 +127,22 @@ export async function POST(request: Request) {
     userAttributes.push({ Name: "email", Value: email });
     userAttributes.push({ Name: "email_verified", Value: "true" });
   } else {
+    const email = body.email?.trim().toLowerCase();
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required." },
+        { status: 400 },
+      );
+    }
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: "The email address is not in a valid format." },
+        { status: 400 },
+      );
+    }
+    userAttributes.push({ Name: "email", Value: email });
+    userAttributes.push({ Name: "email_verified", Value: "true" });
+
     const street = body.street?.trim();
     const city = body.city?.trim();
     const zipCode = body.zipCode?.trim();
