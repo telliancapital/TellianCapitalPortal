@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { TellianLogo } from "@/components/TellianLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { FloatingField } from "@/components/FloatingField";
@@ -65,7 +64,6 @@ function toInvalid(code: string | undefined): InvalidCode {
 
 export default function ActivationForm({ token }: { token?: string }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [stage, setStage] = useState<Stage>(() =>
     token ? { kind: "loading" } : { kind: "invalid", code: "invalid" },
   );
@@ -127,12 +125,16 @@ export default function ActivationForm({ token }: { token?: string }) {
     };
   }, [token, startMfa]);
 
-  /* Redirect to the portal shortly after completion. */
+  /* Redirect to the portal shortly after completion. Full page load, like
+     LoginForm: the session cookie changed to the customer during activation,
+     and AuthProvider only reads /api/auth/me on mount — a client-side
+     navigation would keep the stale user (e.g. an admin testing in the same
+     browser) and "/" would bounce to /admin. */
   useEffect(() => {
     if (stage.kind !== "done") return;
-    const id = setTimeout(() => router.replace("/"), 1800);
+    const id = setTimeout(() => window.location.assign("/"), 1800);
     return () => clearTimeout(id);
-  }, [stage.kind, router]);
+  }, [stage.kind]);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
@@ -426,9 +428,21 @@ export default function ActivationForm({ token }: { token?: string }) {
               <path d="M5 12l5 5L20 7" stroke={C.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <Link href="/" style={{ ...secondaryLinkStyle, color: C.success }}>
+          {/* Full page load for the same reason as the auto-redirect above. */}
+          <button
+            type="button"
+            onClick={() => window.location.assign("/")}
+            style={{
+              ...secondaryLinkStyle,
+              color: C.success,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+            }}
+          >
             {t("activate.done.cta")} →
-          </Link>
+          </button>
         </div>
       )}
     </div>
