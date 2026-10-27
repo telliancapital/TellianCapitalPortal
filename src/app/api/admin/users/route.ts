@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getUserPoolId } from "@/lib/cognito";
 import { requireApiAdminOrInternal } from "@/lib/dal";
+import { readActivationState, type ActivationState } from "@/lib/activation";
 
 export async function GET() {
   const auth = await requireApiAdminOrInternal();
@@ -35,6 +36,7 @@ export async function GET() {
         let city: string | undefined;
         let zipCode: string | undefined;
         let assignedRm: string | undefined;
+        let activation: ActivationState | null = null;
 
         try {
           const [groupsData, userData] = await Promise.all([
@@ -93,6 +95,7 @@ export async function GET() {
           assignedRm = userData.UserAttributes?.find(
             (a) => a.Name === "custom:assignedRm",
           )?.Value;
+          activation = readActivationState(userData.UserAttributes);
         } catch (err) {
           console.warn(
             `Failed to fetch extra details for user ${username}`,
@@ -116,6 +119,7 @@ export async function GET() {
           city,
           zipCode,
           assignedRm,
+          activation,
         };
       }),
     );

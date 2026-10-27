@@ -3,14 +3,23 @@ import { NextResponse, type NextRequest } from "next/server";
 const SESSION_COOKIE = "tellian_session";
 
 const PUBLIC_PATHS = ["/login"];
+/* Reachable with or without a session: the activation flow signs the
+   customer in halfway through (password step) and must keep rendering. */
+const OPEN_PATHS = ["/activate"];
+
+function matches(paths: string[], pathname: string): boolean {
+  return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return matches(PUBLIC_PATHS, pathname);
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+
+  if (matches(OPEN_PATHS, pathname)) return NextResponse.next();
 
   if (!hasSession && !isPublic(pathname)) {
     const url = request.nextUrl.clone();

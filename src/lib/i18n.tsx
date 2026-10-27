@@ -150,6 +150,59 @@ const translations = {
   },
   "challenge.submit": { de: "Bestätigen", en: "Confirm" },
 
+  // Customer activation (magic link)
+  "activate.step": { de: "Schritt {n} von 3", en: "Step {n} of 3" },
+  "activate.loading.headline": { de: "Link wird geprüft…", en: "Checking your link…" },
+  "activate.invalid.headline": { de: "Link ungültig.", en: "Invalid link." },
+  "activate.invalid.body": {
+    de: "Dieser Aktivierungslink ist ungültig. Bitte wenden Sie sich an Ihren Relationship Manager.",
+    en: "This activation link is not valid. Please contact your relationship manager.",
+  },
+  "activate.expired.headline": { de: "Link abgelaufen.", en: "Link expired." },
+  "activate.expired.body": {
+    de: "Dieser Aktivierungslink ist abgelaufen. Bitte fordern Sie bei Tellian Capital einen neuen Link an.",
+    en: "This activation link has expired. Please ask Tellian Capital for a new link.",
+  },
+  "activate.completed.headline": { de: "Bereits aktiviert.", en: "Already activated." },
+  "activate.completed.body": {
+    de: "Dieser Link wurde bereits verwendet. Melden Sie sich mit Ihrer Kunden-ID und Ihrem Passwort an.",
+    en: "This link has already been used. Sign in with your client ID and password.",
+  },
+  "activate.verify.headline": { de: "Zugang aktivieren.", en: "Activate your access." },
+  "activate.verify.subtext": {
+    de: "Geben Sie zur Bestätigung die Kunden-ID ein, die Sie von Tellian Capital erhalten haben.",
+    en: "To confirm, enter the client ID you received from Tellian Capital.",
+  },
+  "activate.verify.submit": { de: "Weiter", en: "Continue" },
+  "activate.verify.error": {
+    de: "Die Kunden-ID stimmt nicht überein.",
+    en: "The client ID does not match.",
+  },
+  "activate.password.subtext": {
+    de: "Legen Sie ein persönliches Passwort für Ihr Konto fest.",
+    en: "Set a personal password for your account.",
+  },
+  "activate.mfa.subtext": {
+    de: "Richten Sie zum Abschluss Ihre Authenticator-App ein. Dieser Schritt ist erforderlich.",
+    en: "To finish, set up your authenticator app. This step is required.",
+  },
+  "activate.mfa.error": { de: "Ungültiger Bestätigungscode.", en: "Invalid verification code." },
+  "activate.needsLogin.body": {
+    de: "Ihr Passwort ist gespeichert. Melden Sie sich an, um die Einrichtung der Authenticator-App abzuschliessen.",
+    en: "Your password is saved. Sign in to finish setting up your authenticator app.",
+  },
+  "activate.done.headline": { de: "Zugang aktiviert.", en: "Access activated." },
+  "activate.done.body": {
+    de: "Ihr Konto ist eingerichtet. Sie werden zum Portal weitergeleitet.",
+    en: "Your account is set up. Taking you to the portal.",
+  },
+  "activate.done.cta": { de: "Zum Portal", en: "Go to portal" },
+  "activate.toLogin": { de: "Zur Anmeldung", en: "Go to sign in" },
+  "activate.error.generic": {
+    de: "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    en: "Something went wrong. Please try again.",
+  },
+
   "login.support": { de: "Probleme beim Anmelden?", en: "Trouble signing in?" },
   "login.support.link": { de: "Support kontaktieren", en: "Contact support" },
   "login.footer": {
@@ -182,6 +235,42 @@ const translations = {
   "admin.col.status": { de: "Status", en: "Status" },
   "admin.col.mfa": { de: "MFA", en: "MFA" },
   "admin.col.actions": { de: "Aktionen", en: "Actions" },
+  "admin.col.activation": { de: "Aktivierung", en: "Activation" },
+  "admin.activation.none": { de: "Kein Link", en: "No link" },
+  "admin.activation.sent": { de: "Link gesendet", en: "Link sent" },
+  "admin.activation.opened": { de: "Link geöffnet", en: "Link opened" },
+  "admin.activation.verified": { de: "ID bestätigt", en: "ID verified" },
+  "admin.activation.password": { de: "Passwort gesetzt", en: "Password set" },
+  "admin.activation.completed": { de: "Aktiviert", en: "Activated" },
+  "admin.activation.expired": { de: "Link abgelaufen", en: "Link expired" },
+  "admin.activation.emailFailed": { de: "E-Mail fehlgeschlagen", en: "Email failed" },
+  "admin.activation.emailNotSent": { de: "E-Mail nicht versendet", en: "Email not sent" },
+  "admin.activation.expires": { de: "Gültig bis {date}", en: "Valid until {date}" },
+  "admin.activation.lastLogin": { de: "Letzte Anmeldung {date}", en: "Last sign-in {date}" },
+  "admin.activation.neverLoggedIn": { de: "Nie angemeldet", en: "Never signed in" },
+  "admin.activation.linkLabel": { de: "Aktivierungslink", en: "Activation link" },
+  "admin.action.resendActivation": { de: "Link erneut senden", en: "Resend link" },
+  "admin.confirm.resendTitle": {
+    de: "Aktivierungslink erneut senden",
+    en: "Resend activation link",
+  },
+  "admin.confirm.resendBody": {
+    de: "Ein neuer Link für {id} wird erstellt und per E-Mail versendet. Der bisherige Link verliert sofort seine Gültigkeit.",
+    en: "A new link for {id} will be created and emailed. The previous link stops working immediately.",
+  },
+  "admin.resend.headline": { de: "Neuer Aktivierungslink", en: "New activation link" },
+  "admin.toast.resent": {
+    de: "Aktivierungslink für {id} erstellt.",
+    en: "Activation link for {id} created.",
+  },
+  "admin.created.customerBody": {
+    de: "Der Aktivierungslink für {id} wurde per E-Mail an {email} gesendet. Er ist einmalig und {hours} Stunden gültig.",
+    en: "The activation link for {id} has been emailed to {email}. It can be used once and is valid for {hours} hours.",
+  },
+  "admin.created.customerBodyNotSent": {
+    de: "Der Aktivierungslink für {id} konnte nicht per E-Mail versendet werden. Senden Sie ihn dem Mandanten über einen sicheren Kanal. Er ist einmalig und {hours} Stunden gültig.",
+    en: "The activation link for {id} could not be emailed. Send it to the client through a secure channel. It can be used once and is valid for {hours} hours.",
+  },
   "admin.status.enabled": { de: "Aktiv", en: "Active" },
   "admin.status.pending": { de: "Ausstehend", en: "Pending" },
   "admin.status.disabled": { de: "Inaktiv", en: "Inactive" },

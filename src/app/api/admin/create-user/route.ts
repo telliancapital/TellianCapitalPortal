@@ -13,6 +13,15 @@ import {
   isValidGroup,
 } from "@/lib/cognito";
 import { requireApiGroup } from "@/lib/dal";
+import {
+  buildActivationLink,
+  getActivationTtlHours,
+  issueActivationSecret,
+  nowIso,
+  updateActivation,
+  type ActivationEmailStatus,
+} from "@/lib/activation";
+import { sendActivationEmail } from "@/lib/email";
 
 interface CreateUserBody {
   customerId?: string;
@@ -176,6 +185,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Customers need a real email so the activation link can be sent.
+    const email = body.email?.trim().toLowerCase();
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required." },
+        { status: 400 },
+      );
+    }
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: "The email address is not in a valid format." },
+        { status: 400 },
+      );
+    }
+
     const street = body.street?.trim();
     const city = body.city?.trim();
     const zipCode = body.zipCode?.trim();
@@ -236,6 +260,8 @@ export async function POST(request: Request) {
       );
     }
 
+    userAttributes.push({ Name: "email", Value: email });
+    userAttributes.push({ Name: "email_verified", Value: "true" });
     userAttributes.push({ Name: "custom:street", Value: street });
     userAttributes.push({ Name: "custom:city", Value: city });
     userAttributes.push({ Name: "custom:zipCode", Value: zipCode });
@@ -268,16 +294,86 @@ export async function POST(request: Request) {
       }),
     );
 
+    if (isStaffRole(role)) {
+      return NextResponse.json({
+        status: "OK",
+        username: actualUsername,
+        role,
+        temporaryPassword,
+      });
+    }
+
+    // Customers never see the temporary password — they set their own via
+    // the activation link (verify customer number → password → MFA).
+    const activation = await issueActivation(
+      actualUsername,
+      created.User?.Attributes?.find((a) => a.Name === "sub")?.Value,
+      userAttributes.find((a) => a.Name === "email")?.Value ?? "",
+      `${firstName} ${lastName}`,
+      new URL(request.url).origin,
+    );
+
     return NextResponse.json({
       status: "OK",
       username: actualUsername,
       role,
-      temporaryPassword,
+      ...activation,
     });
   } catch (err) {
     console.error("Create user error", err);
     return mapCognitoError(err, username);
   }
+}
+
+async function issueActivation(
+  username: string,
+  sub: string | undefined,
+  email: string,
+  name: string,
+  requestOrigin: string,
+): Promise<{
+  activationLink: string | null;
+  activationEmail: ActivationEmailStatus;
+  expiresAt: string | null;
+  ttlHours: number;
+}> {
+  const ttlHours = getActivationTtlHours();
+  if (!sub) {
+    console.error("issueActivation: created user has no sub", { username });
+    return { activationLink: null, activationEmail: "FAILED", expiresAt: null, ttlHours };
+  }
+
+  const { secret, tokenHash, expiresAt } = issueActivationSecret();
+  const activationLink = buildActivationLink(sub, secret, requestOrigin);
+
+  try {
+    await updateActivation(username, {
+      tokenHash,
+      expiresAt,
+      sentAt: nowIso(),
+      emailStatus: "NOT_SENT",
+    });
+  } catch (err) {
+    // Most likely the custom attributes are missing from the pool schema
+    // (scripts/add-activation-attributes.mjs). The user exists; the admin
+    // can regenerate the link once the schema is in place.
+    console.error("issueActivation: failed to store activation state", err);
+    return { activationLink: null, activationEmail: "FAILED", expiresAt: null, ttlHours };
+  }
+
+  const result = await sendActivationEmail({ to: email, name, link: activationLink, ttlHours });
+  const activationEmail: ActivationEmailStatus = result.sent
+    ? "SENT"
+    : result.error === "not_configured"
+      ? "NOT_SENT"
+      : "FAILED";
+  if (activationEmail !== "NOT_SENT") {
+    await updateActivation(username, { emailStatus: activationEmail }).catch((err) =>
+      console.warn("issueActivation: failed to store email status", err),
+    );
+  }
+
+  return { activationLink, activationEmail, expiresAt, ttlHours };
 }
 
 function mapCognitoError(err: unknown, username: string): NextResponse {

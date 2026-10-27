@@ -1323,6 +1323,24 @@ const mutedLinkStyle: React.CSSProperties = {
   transition: `all ${DURATION.normal}ms ${EASE.standard}`,
 };
 
+/* Shared with the customer activation flow (ActivationForm) so both pages
+   render identically. */
+export {
+  ErrorBanner,
+  MfaSetupSecret,
+  SecondaryButton,
+  NEW_PASSWORD_RULES,
+  validateNewPassword,
+  validateMfaCode,
+  eyebrowStyle,
+  headlineStyle,
+  introStyle,
+  formStyle,
+  linkStyle,
+  mutedLinkStyle,
+  footerStyle,
+};
+
 const footerStyle: React.CSSProperties = {
   fontFamily: sans,
   fontSize: 9,
