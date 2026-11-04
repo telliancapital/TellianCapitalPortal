@@ -1380,7 +1380,6 @@ function CreateUserModal({
     if (!firstName.trim()) errors.firstName = required;
     if (!lastName.trim()) errors.lastName = required;
     if (!phoneNumber.trim()) errors.phoneNumber = required;
-    if (!profileImageKey) errors.profileImage = required;
     if (!email.trim()) errors.email = required;
     if (!isStaff) {
       if (!customerId.trim()) errors.customerId = required;
@@ -1774,7 +1773,7 @@ function CreateUserModal({
             {/* Profile image */}
             <div>
               <ProfileImageUpload
-                label={`${t("admin.modal.profileImage")} *`}
+                label={t("admin.modal.profileImage")}
                 imageKey={profileImageKey}
                 onImageKeyChange={setProfileImageKey}
                 disabled={submitting}
@@ -1785,11 +1784,6 @@ function CreateUserModal({
                 replaceLabel={t("admin.modal.image.replace")}
                 removeLabel={t("admin.modal.image.remove")}
               />
-              {fieldErrors.profileImage && (
-                <span role="alert" style={{ fontFamily: sans, fontSize: 12, color: C.error, display: "block", marginTop: 6 }}>
-                  {fieldErrors.profileImage}
-                </span>
-              )}
             </div>
 
             {!isStaff && (
