@@ -151,7 +151,7 @@ const translations = {
   "challenge.submit": { de: "Bestätigen", en: "Confirm" },
 
   // Customer activation (magic link)
-  "activate.step": { de: "Schritt {n} von 3", en: "Step {n} of 3" },
+  "activate.step": { de: "Schritt {n} von 2", en: "Step {n} of 2" },
   "activate.loading.headline": { de: "Link wird geprüft…", en: "Checking your link…" },
   "activate.invalid.headline": { de: "Link ungültig.", en: "Invalid link." },
   "activate.invalid.body": {
@@ -182,14 +182,10 @@ const translations = {
     de: "Legen Sie ein persönliches Passwort für Ihr Konto fest.",
     en: "Set a personal password for your account.",
   },
-  "activate.mfa.subtext": {
-    de: "Richten Sie zum Abschluss Ihre Authenticator-App ein. Dieser Schritt ist erforderlich.",
-    en: "To finish, set up your authenticator app. This step is required.",
-  },
-  "activate.mfa.error": { de: "Ungültiger Bestätigungscode.", en: "Invalid verification code." },
+  "activate.needsLogin.headline": { de: "Passwort gespeichert.", en: "Password saved." },
   "activate.needsLogin.body": {
-    de: "Ihr Passwort ist gespeichert. Melden Sie sich an, um die Einrichtung der Authenticator-App abzuschliessen.",
-    en: "Your password is saved. Sign in to finish setting up your authenticator app.",
+    de: "Melden Sie sich mit Ihrer Kunden-ID und Ihrem neuen Passwort an.",
+    en: "Sign in with your client ID and your new password.",
   },
   "activate.done.headline": { de: "Zugang aktiviert.", en: "Access activated." },
   "activate.done.body": {
@@ -240,7 +236,6 @@ const translations = {
   "admin.activation.sent": { de: "Link gesendet", en: "Link sent" },
   "admin.activation.opened": { de: "Link geöffnet", en: "Link opened" },
   "admin.activation.verified": { de: "ID bestätigt", en: "ID verified" },
-  "admin.activation.password": { de: "Passwort gesetzt", en: "Password set" },
   "admin.activation.completed": { de: "Aktiviert", en: "Activated" },
   "admin.activation.expired": { de: "Link abgelaufen", en: "Link expired" },
   "admin.activation.emailFailed": { de: "E-Mail fehlgeschlagen", en: "Email failed" },
@@ -480,6 +475,56 @@ const translations = {
   },
   "docs.rm.contact": { de: "Kontakt aufnehmen", en: "Get in touch" },
   "docs.rm.noPhoto": { de: "Kein Foto verfügbar", en: "No photo available" },
+
+  // Client dashboard — settings / MFA
+  "docs.settings.headline": { de: "Einstellungen", en: "Settings" },
+  "docs.mfa.title": {
+    de: "Zwei-Faktor-Authentifizierung (MFA)",
+    en: "Two-factor authentication (MFA)",
+  },
+  "docs.mfa.status.enabled": { de: "Aktiviert", en: "Enabled" },
+  "docs.mfa.status.disabled": { de: "Deaktiviert", en: "Disabled" },
+  "docs.mfa.status.notSetUp": { de: "Nicht eingerichtet", en: "Not set up" },
+  "docs.mfa.body.notSetUp": {
+    de: "Schützen Sie Ihr Konto zusätzlich mit einer Authenticator-App.",
+    en: "Add extra protection to your account with an authenticator app.",
+  },
+  "docs.mfa.body.enabled": {
+    de: "Bei jeder Anmeldung wird ein Code aus Ihrer Authenticator-App abgefragt.",
+    en: "A code from your authenticator app is required at every sign-in.",
+  },
+  "docs.mfa.body.disabled": {
+    de: "Ihr Authenticator ist eingerichtet, wird bei der Anmeldung aber nicht abgefragt.",
+    en: "Your authenticator is set up but not requested at sign-in.",
+  },
+  "docs.mfa.setup": { de: "MFA einrichten", en: "Set up MFA" },
+  "docs.mfa.reset": { de: "MFA zurücksetzen", en: "Reset MFA" },
+  "docs.mfa.enable": { de: "MFA aktivieren", en: "Enable MFA" },
+  "docs.mfa.disable": { de: "MFA deaktivieren", en: "Disable MFA" },
+  "docs.mfa.reset.headline": { de: "Authenticator zurücksetzen", en: "Reset authenticator" },
+  "docs.mfa.reset.subtext": {
+    de: "Der bisherige Authenticator wird ersetzt, sobald Sie den neuen Code bestätigen.",
+    en: "Your current authenticator is replaced once you confirm the new code.",
+  },
+  "docs.mfa.cancel": { de: "Abbrechen", en: "Cancel" },
+  "docs.mfa.confirmDisable.title": { de: "MFA deaktivieren?", en: "Disable MFA?" },
+  "docs.mfa.confirmDisable.body": {
+    de: "Ihr Konto ist danach nur noch durch Ihr Passwort geschützt. Sie können MFA jederzeit wieder aktivieren.",
+    en: "Your account will then be protected by your password only. You can enable MFA again at any time.",
+  },
+  "docs.mfa.toast.setUp": { de: "MFA eingerichtet und aktiviert.", en: "MFA set up and enabled." },
+  "docs.mfa.toast.reset": { de: "Authenticator zurückgesetzt.", en: "Authenticator reset." },
+  "docs.mfa.toast.enabled": { de: "MFA aktiviert.", en: "MFA enabled." },
+  "docs.mfa.toast.disabled": { de: "MFA deaktiviert.", en: "MFA disabled." },
+  "docs.mfa.error.code": { de: "Ungültiger Bestätigungscode.", en: "Invalid verification code." },
+  "docs.mfa.error.session": {
+    de: "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",
+    en: "Session expired. Please sign in again.",
+  },
+  "docs.mfa.error.generic": {
+    de: "MFA-Änderung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    en: "MFA change failed. Please try again.",
+  },
   "docs.loading": { de: "Berichte werden geladen…", en: "Loading reports…" },
   "docs.error": { de: "Fehler beim Laden der Berichte.", en: "Error loading reports." },
   "docs.countMore": {

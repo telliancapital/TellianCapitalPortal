@@ -3,14 +3,12 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { ActivationState } from "@/lib/activation";
 
-export type ActivationStep = "verify" | "password" | "mfa";
+export type ActivationStep = "verify" | "password";
 
 export type ActivationErrorCode = "invalid" | "expired" | "completed";
 
 export function activationStep(state: ActivationState): ActivationStep {
-  if (state.passwordAt) return "mfa";
-  if (state.verifiedAt) return "password";
-  return "verify";
+  return state.verifiedAt ? "password" : "verify";
 }
 
 /** Uniform 4xx for a bad link — the page maps `code` to copy. */

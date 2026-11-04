@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { COGNITO_GROUPS, cognito, getUserPoolId } from "@/lib/cognito";
 import { verifySession } from "@/lib/dal";
+import { readMfaFlag } from "@/lib/mfa";
 import { clearSessionCookie } from "@/lib/session";
 import { presignDownload } from "@/lib/s3";
 
@@ -24,6 +25,7 @@ export async function GET() {
   }
 
   let mfaEnabled = false;
+  let mfaSetUp = false;
   let mfaRequired = false;
   let mfaSkipped = false;
   let phoneNumber: string | null = null;
@@ -44,13 +46,15 @@ export async function GET() {
       (user.UserMFASettingList ?? []).includes("SOFTWARE_TOKEN_MFA") ||
       user.PreferredMfaSetting === "SOFTWARE_TOKEN_MFA";
 
+    const mfaFlag = readMfaFlag(user.UserAttributes);
+
+    // mfaSetUp = a verified authenticator exists: either active, or
+    // paused by the customer from the dashboard (token kept).
+    mfaSetUp = mfaEnabled || mfaFlag === "MFA_PAUSED";
+
     // mfaRequired = admin has explicitly forced MFA via the standard
     // attribute flag (set by /api/admin/toggle-mfa).
-    const attributes = ["nickname", "profile", "website"];
-    mfaRequired =
-      user.UserAttributes?.some(
-        (a) => attributes.includes(a.Name!) && a.Value === "MFA_ENABLED",
-      ) ?? false;
+    mfaRequired = mfaFlag === "MFA_ENABLED";
 
     // mfaSkipped = admin is not forcing MFA. Kept for backwards-compat.
     mfaSkipped = !mfaRequired;
@@ -127,6 +131,7 @@ export async function GET() {
     isAdmin: session.isAdmin,
     impersonatedBy: session.impersonatedBy ?? null,
     mfaEnabled,
+    mfaSetUp,
     mfaRequired,
     mfaSkipped,
     phoneNumber,

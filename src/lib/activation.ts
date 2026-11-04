@@ -15,6 +15,10 @@ import { cognito, getUserPoolId } from "./cognito";
    Cognito user as custom attributes (see
    scripts/add-activation-attributes.mjs). The link itself is
    `<sub>.<secret>`; only sha256(secret) is persisted.
+   Flow: verify customer ID → set password (= activated). MFA is
+   optional and enabled by the customer from the dashboard;
+   `mfaAt` is only read for accounts activated under the earlier
+   mandatory-MFA flow.
    ═══════════════════════════════════════════════════════════ */
 
 export const ACTIVATION_ATTR = {
@@ -38,7 +42,6 @@ export type ActivationStage =
   | "sent"
   | "opened"
   | "verified"
-  | "password"
   | "completed"
   | "expired";
 
@@ -92,10 +95,9 @@ export function readActivationState(
       : null;
 
   let stage: ActivationStage;
-  if (mfaAt) stage = "completed";
+  if (passwordAt || mfaAt) stage = "completed";
   else if (!sentAt) stage = "none";
   else if (isExpired(expiresAt)) stage = "expired";
-  else if (passwordAt) stage = "password";
   else if (verifiedAt) stage = "verified";
   else if (openedAt) stage = "opened";
   else stage = "sent";
