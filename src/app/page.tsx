@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalLayout } from "@/components/PortalLayout";
+import { MfaSettingsCard } from "@/components/MfaSettingsCard";
 import { useAuth } from "@/lib/auth";
 import { useI18n, type Locale } from "@/lib/i18n";
 import { C, LABEL, sans, serif, selectChevron } from "@/lib/tokens";
@@ -616,6 +617,9 @@ export default function DocumentsPage() {
               </div>
             </div>
           )}
+
+          {/* ── Settings: MFA set-up / enable / disable / reset ── */}
+          <MfaSettingsCard />
         </aside>
       </div>
 
@@ -625,7 +629,8 @@ export default function DocumentsPage() {
         .tellian-portal-dokument:focus-visible,
         .tellian-portal-gruppe:focus-visible,
         .tellian-portal-kontakt:focus-visible,
-        .tellian-portal-cta:focus-visible { outline: 2px solid ${C.purple}; outline-offset: 2px; }
+        .tellian-portal-cta:focus-visible,
+        .tellian-portal-mfa-btn:focus-visible { outline: 2px solid ${C.purple}; outline-offset: 2px; }
         .tellian-portal-kontakt {
           display: flex; align-items: center; gap: 10px; min-height: 36px;
           font-family: ${sans}; font-size: 14px; color: ${C.dark};

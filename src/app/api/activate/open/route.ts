@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { AdminListGroupsForUserCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { COGNITO_GROUPS, cognito, getUserPoolId } from "@/lib/cognito";
-import { verifyRealSession } from "@/lib/dal";
 import { findActivationUser, nowIso, updateActivation } from "@/lib/activation";
 import { activationStep, lookupErrorResponse } from "../shared";
 
@@ -47,14 +46,5 @@ export async function POST(request: Request) {
     );
   }
 
-  const step = activationStep(user.state);
-  // The MFA step needs the session created at the password step. If that
-  // session is gone the customer signs in with the new password instead.
-  let needsLogin = false;
-  if (step === "mfa") {
-    const session = await verifyRealSession();
-    needsLogin = !session || session.username !== user.username;
-  }
-
-  return NextResponse.json({ status: "OK", step, needsLogin });
+  return NextResponse.json({ status: "OK", step: activationStep(user.state) });
 }

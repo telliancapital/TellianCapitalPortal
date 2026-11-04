@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { cognito, getClientId, getUserPoolId } from "@/lib/cognito";
 import {
+  clearActivation,
   findActivationUser,
   nowIso,
   recordLogin,
@@ -30,10 +31,10 @@ function meetsPolicy(pw: string): boolean {
 }
 
 /**
- * Step 2 — sets the permanent password (replacing the unused temporary
- * one) and signs the customer in so the MFA step can run against the
- * session. Rejected if the customer number was not verified first or the
- * password was already set through this link (single use).
+ * Step 2 (final) — sets the permanent password (replacing the unused
+ * temporary one), consumes the activation link and signs the customer in.
+ * MFA is off by default; the customer can enable it later from the
+ * dashboard. Rejected if the customer number was not verified first.
  */
 export async function POST(request: Request) {
   let body: SetPasswordBody;
@@ -61,12 +62,6 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
-  if (user.state.passwordAt) {
-    return NextResponse.json(
-      { error: "Password already set via this link", code: "used" },
-      { status: 409 },
-    );
-  }
 
   try {
     await cognito.send(
@@ -77,8 +72,26 @@ export async function POST(request: Request) {
         Permanent: true,
       }),
     );
+    // `passwordAt` marks the activation as completed; the link is dead
+    // from here on (single use).
     await updateActivation(user.username, { passwordAt: nowIso() });
+    await clearActivation(user.username, ["tokenHash"]).catch((err) =>
+      console.warn("Activation set-password: failed to clear token hash", err),
+    );
+  } catch (err) {
+    if (err instanceof InvalidPasswordException) {
+      return NextResponse.json(
+        { error: err.message || "Password does not meet policy", code: "policy" },
+        { status: 400 },
+      );
+    }
+    console.error("Activation set-password error", err);
+    return NextResponse.json({ error: "Failed to set password" }, { status: 500 });
+  }
 
+  // Sign the customer straight in. Any failure here is non-fatal: the
+  // password is saved and they can sign in normally.
+  try {
     const auth = await cognito.send(
       new AdminInitiateAuthCommand({
         UserPoolId: getUserPoolId(),
@@ -90,9 +103,8 @@ export async function POST(request: Request) {
 
     const result = auth.AuthenticationResult;
     if (auth.ChallengeName || !result?.IdToken || !result.AccessToken) {
-      // Password is saved; the customer can still sign in normally.
       console.error("Activation set-password: unexpected challenge", auth.ChallengeName);
-      return NextResponse.json({ status: "OK", step: "mfa", needsLogin: true });
+      return NextResponse.json({ status: "OK", step: "completed", needsLogin: true });
     }
 
     await setSessionCookie({
@@ -102,15 +114,9 @@ export async function POST(request: Request) {
     });
     void recordLogin(user.username);
 
-    return NextResponse.json({ status: "OK", step: "mfa", needsLogin: false });
+    return NextResponse.json({ status: "OK", step: "completed", needsLogin: false });
   } catch (err) {
-    if (err instanceof InvalidPasswordException) {
-      return NextResponse.json(
-        { error: err.message || "Password does not meet policy", code: "policy" },
-        { status: 400 },
-      );
-    }
-    console.error("Activation set-password error", err);
-    return NextResponse.json({ error: "Failed to set password" }, { status: 500 });
+    console.error("Activation set-password: sign-in after activation failed", err);
+    return NextResponse.json({ status: "OK", step: "completed", needsLogin: true });
   }
 }

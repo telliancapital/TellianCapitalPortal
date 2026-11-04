@@ -23,6 +23,10 @@ export interface AuthUser {
   groups: string[];
   isAdmin: boolean;
   impersonatedBy: string | null;
+  /* MFA: `mfaSetUp` = a verified authenticator exists; `mfaEnabled` = it is
+     active at sign-in. Set up but disabled → mfaSetUp && !mfaEnabled. */
+  mfaEnabled: boolean;
+  mfaSetUp: boolean;
   phoneNumber?: string | null;
   firstName?: string | null;
   lastName?: string | null;
@@ -58,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           groups: data.groups,
           isAdmin: data.isAdmin,
           impersonatedBy: data.impersonatedBy ?? null,
+          mfaEnabled: Boolean(data.mfaEnabled),
+          mfaSetUp: Boolean(data.mfaSetUp),
           phoneNumber: data.phoneNumber ?? null,
           firstName: data.firstName ?? null,
           lastName: data.lastName ?? null,

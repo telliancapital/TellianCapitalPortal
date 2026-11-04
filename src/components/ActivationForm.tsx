@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TellianLogo } from "@/components/TellianLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -8,11 +8,9 @@ import { FloatingField } from "@/components/FloatingField";
 import { PasswordField } from "@/components/PasswordField";
 import {
   ErrorBanner,
-  MfaSetupSecret,
   SecondaryButton,
   NEW_PASSWORD_RULES,
   validateNewPassword,
-  validateMfaCode,
   eyebrowStyle,
   headlineStyle,
   introStyle,
@@ -25,7 +23,8 @@ import { C, sans } from "@/lib/tokens";
 
 /* ═══════════════════════════════════════════════════════════
    CUSTOMER ACTIVATION — one-time link from the admin email.
-   verify customer number → set password → set up MFA → portal.
+   verify customer number → set password → portal. MFA is off by
+   default; the customer can enable it from the dashboard.
    Layout mirrors LoginForm (same three zones, same hero).
    ═══════════════════════════════════════════════════════════ */
 
@@ -36,14 +35,14 @@ type Stage =
   | { kind: "invalid"; code: InvalidCode }
   | { kind: "verify" }
   | { kind: "password" }
-  | { kind: "mfa"; otpauthUrl: string | null; needsLogin: boolean }
+  /* Password saved but the automatic sign-in failed — link to /login. */
+  | { kind: "needsLogin" }
   | { kind: "done" };
 
 interface StepResponse {
   status?: "OK";
-  step?: "verify" | "password" | "mfa" | "completed";
+  step?: "verify" | "password" | "completed";
   needsLogin?: boolean;
-  otpauthUrl?: string;
   error?: string;
   code?: string;
 }
@@ -73,28 +72,8 @@ export default function ActivationForm({ token }: { token?: string }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
-  const [setupCode, setSetupCode] = useState("");
-  const [setupCodeError, setSetupCodeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const startMfa = useCallback(async () => {
-    const { ok, data } = await post("/api/activate/mfa-init", { token });
-    if (ok && data.otpauthUrl) {
-      setStage({ kind: "mfa", otpauthUrl: data.otpauthUrl, needsLogin: false });
-      return;
-    }
-    if (data.code === "needsLogin") {
-      setStage({ kind: "mfa", otpauthUrl: null, needsLogin: true });
-      return;
-    }
-    if (data.code) {
-      setStage({ kind: "invalid", code: toInvalid(data.code) });
-      return;
-    }
-    setStage({ kind: "mfa", otpauthUrl: null, needsLogin: false });
-    setError(t("activate.error.generic"));
-  }, [token, t]);
 
   /* Validate the link once on mount and resume at the right step. */
   useEffect(() => {
@@ -108,14 +87,7 @@ export default function ActivationForm({ token }: { token?: string }) {
           setStage({ kind: "invalid", code: toInvalid(data.code) });
           return;
         }
-        if (data.step === "mfa") {
-          if (data.needsLogin) setStage({ kind: "mfa", otpauthUrl: null, needsLogin: true });
-          else await startMfa();
-        } else if (data.step === "password") {
-          setStage({ kind: "password" });
-        } else {
-          setStage({ kind: "verify" });
-        }
+        setStage(data.step === "password" ? { kind: "password" } : { kind: "verify" });
       } catch {
         if (!cancelled) setStage({ kind: "invalid", code: "invalid" });
       }
@@ -123,7 +95,7 @@ export default function ActivationForm({ token }: { token?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [token, startMfa]);
+  }, [token]);
 
   /* Redirect to the portal shortly after completion. Full page load, like
      LoginForm: the session cookie changed to the customer during activation,
@@ -148,8 +120,7 @@ export default function ActivationForm({ token }: { token?: string }) {
     try {
       const { ok, data } = await post("/api/activate/verify", { token, customerId: value });
       if (ok) {
-        if (data.step === "mfa") await startMfa();
-        else setStage({ kind: "password" });
+        setStage({ kind: "password" });
         return;
       }
       if (data.code === "mismatch") setCustomerIdError(t("activate.verify.error"));
@@ -179,13 +150,11 @@ export default function ActivationForm({ token }: { token?: string }) {
         password: newPassword,
       });
       if (ok) {
-        if (data.needsLogin) setStage({ kind: "mfa", otpauthUrl: null, needsLogin: true });
-        else await startMfa();
+        setStage(data.needsLogin ? { kind: "needsLogin" } : { kind: "done" });
         return;
       }
       if (data.code === "policy") setNewPasswordError(t("validation.password.policy"));
       else if (data.code === "unverified") setStage({ kind: "verify" });
-      else if (data.code === "used") await startMfa();
       else if (data.code) setStage({ kind: "invalid", code: toInvalid(data.code) });
       else setError(t("activate.error.generic"));
     } catch {
@@ -195,35 +164,9 @@ export default function ActivationForm({ token }: { token?: string }) {
     }
   }
 
-  async function handleMfa(e: React.FormEvent) {
-    e.preventDefault();
-    const codeErr = validateMfaCode(setupCode);
-    if (codeErr) {
-      setSetupCodeError(t(codeErr));
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const { ok, data } = await post("/api/activate/mfa-verify", { token, code: setupCode });
-      if (ok) {
-        setStage({ kind: "done" });
-        return;
-      }
-      if (data.code === "needsLogin") setStage({ kind: "mfa", otpauthUrl: null, needsLogin: true });
-      else if (data.code) setStage({ kind: "invalid", code: toInvalid(data.code) });
-      else setSetupCodeError(t("activate.mfa.error"));
-    } catch {
-      setError(t("activate.error.generic"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const passwordRuleResults = NEW_PASSWORD_RULES.map((r) => ({ ...r, passed: r.test(newPassword) }));
 
-  const stepNumber =
-    stage.kind === "verify" ? 1 : stage.kind === "password" ? 2 : stage.kind === "mfa" ? 3 : null;
+  const stepNumber = stage.kind === "verify" ? 1 : stage.kind === "password" ? 2 : null;
 
   const headline =
     stage.kind === "loading"
@@ -234,8 +177,8 @@ export default function ActivationForm({ token }: { token?: string }) {
           ? t("activate.verify.headline")
           : stage.kind === "password"
             ? t("challenge.newPassword.headline")
-            : stage.kind === "mfa"
-              ? t("challenge.mfaSetup.headline")
+            : stage.kind === "needsLogin"
+              ? t("activate.needsLogin.headline")
               : t("activate.done.headline");
 
   const intro =
@@ -247,10 +190,8 @@ export default function ActivationForm({ token }: { token?: string }) {
           ? t("activate.verify.subtext")
           : stage.kind === "password"
             ? t("activate.password.subtext")
-            : stage.kind === "mfa"
-              ? stage.needsLogin
-                ? t("activate.needsLogin.body")
-                : t("activate.mfa.subtext")
+            : stage.kind === "needsLogin"
+              ? t("activate.needsLogin.body")
               : t("activate.done.body");
 
   const headerZone = (
@@ -381,33 +322,12 @@ export default function ActivationForm({ token }: { token?: string }) {
         </form>
       )}
 
-      {stage.kind === "mfa" && stage.needsLogin && (
+      {stage.kind === "needsLogin" && (
         <div style={{ marginTop: 28 }}>
           <Link href="/login" style={secondaryLinkStyle}>
             {t("activate.toLogin")} →
           </Link>
         </div>
-      )}
-
-      {stage.kind === "mfa" && !stage.needsLogin && stage.otpauthUrl && (
-        <form onSubmit={handleMfa} noValidate style={formStyle}>
-          <MfaSetupSecret otpauthUrl={stage.otpauthUrl} t={t} />
-          <FloatingField
-            id="setupCode"
-            label={t("challenge.mfaSetup.label")}
-            type="text"
-            value={setupCode}
-            onChange={(v) => {
-              setSetupCode(v);
-              if (setupCodeError) setSetupCodeError(null);
-            }}
-            autoComplete="one-time-code"
-            error={setupCodeError}
-            disabled={loading}
-            required
-          />
-          <SecondaryButton loading={loading} label={t("challenge.submit")} />
-        </form>
       )}
 
       {stage.kind === "done" && (

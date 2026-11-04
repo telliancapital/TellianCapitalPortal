@@ -41,5 +41,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ status: "OK", step: user.state.passwordAt ? "mfa" : "password" });
+  return NextResponse.json({ status: "OK", step: "password" });
 }
