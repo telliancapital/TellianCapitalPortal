@@ -76,13 +76,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!profileImageKey) {
-    return NextResponse.json(
-      { error: "A profile image is required." },
-      { status: 400 },
-    );
-  }
-  if (!profileImageKey.startsWith("profile-images/")) {
+  if (profileImageKey && !profileImageKey.startsWith("profile-images/")) {
     return NextResponse.json(
       { error: "Invalid profile image reference." },
       { status: 400 },
@@ -107,7 +101,8 @@ export async function POST(request: Request) {
     { Name: "custom:firstName", Value: firstName },
     { Name: "custom:lastName", Value: lastName },
     { Name: "custom:phoneNumber", Value: phoneNumber },
-    { Name: "custom:profileImageKey", Value: profileImageKey },
+    // Empty value clears the attribute when the image was removed.
+    { Name: "custom:profileImageKey", Value: profileImageKey ?? "" },
   ];
 
   if (isStaffRole(role)) {
