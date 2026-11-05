@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { C, sans } from "@/lib/tokens";
 import {
   ALLOWED_IMAGE_CONTENT_TYPES,
@@ -36,9 +37,11 @@ export function ProfileImageUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* Picked file waiting to be framed in the crop dialog. */
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -54,12 +57,19 @@ export function ProfileImageUpload({
       return;
     }
 
+    setPendingFile(file);
+  }
+
+  /* Uploads the framed square (always JPEG) produced by the crop dialog,
+     so the stored photo fits the round avatar whatever the original shape. */
+  async function handleCropped(blob: Blob) {
+    setPendingFile(null);
     setUploading(true);
     try {
       const res = await fetch("/api/admin/profile-image-upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: file.type }),
+        body: JSON.stringify({ contentType: blob.type }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         uploadUrl?: string;
@@ -74,8 +84,8 @@ export function ProfileImageUpload({
 
       const putRes = await fetch(data.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
+        headers: { "Content-Type": blob.type },
+        body: blob,
       });
       if (!putRes.ok) {
         setError(uploadFailedMessage);
@@ -83,7 +93,7 @@ export function ProfileImageUpload({
         return;
       }
 
-      setPreviewUrl(URL.createObjectURL(file));
+      setPreviewUrl(URL.createObjectURL(blob));
       onImageKeyChange(data.key);
       setUploading(false);
     } catch {
@@ -212,6 +222,13 @@ export function ProfileImageUpload({
           style={{ display: "none" }}
         />
       </div>
+      {pendingFile && (
+        <ImageCropDialog
+          file={pendingFile}
+          onConfirm={(blob) => void handleCropped(blob)}
+          onCancel={() => setPendingFile(null)}
+        />
+      )}
       {error && (
         <p
           role="alert"

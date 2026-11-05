@@ -497,6 +497,9 @@ export default function DocumentsPage() {
                         height: 56,
                         borderRadius: "50%",
                         objectFit: "cover",
+                        // Portrait photos: crop from the top so the head
+                        // is never cut off (no effect on square/landscape).
+                        objectPosition: "center top",
                         flexShrink: 0,
                       }}
                     />
