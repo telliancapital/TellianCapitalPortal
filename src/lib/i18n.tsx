@@ -301,6 +301,17 @@ const translations = {
   "admin.modal.image.upload": { de: "Hochladen", en: "Upload" },
   "admin.modal.image.replace": { de: "Ersetzen", en: "Replace" },
   "admin.modal.image.remove": { de: "Entfernen", en: "Remove" },
+  "admin.modal.image.crop.title": { de: "Bildausschnitt wählen", en: "Position photo" },
+  "admin.modal.image.crop.hint": {
+    de: "Ziehen und zoomen Sie das Foto, bis das Gesicht im Kreis sitzt.",
+    en: "Drag and zoom the photo until the face sits inside the circle.",
+  },
+  "admin.modal.image.crop.zoom": { de: "Zoom", en: "Zoom" },
+  "admin.modal.image.crop.apply": { de: "Übernehmen", en: "Apply" },
+  "admin.modal.image.crop.failed": {
+    de: "Das Bild konnte nicht geladen werden. Bitte wählen Sie eine andere Datei.",
+    en: "The image could not be loaded. Please choose another file.",
+  },
   "admin.modal.editTitle": {
     de: "Benutzer bearbeiten",
     en: "Edit user",
