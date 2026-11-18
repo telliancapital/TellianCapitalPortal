@@ -197,7 +197,7 @@ export default function ActivationForm({ token }: { token?: string }) {
   const headerZone = (
     <div className="flex items-center justify-between shrink-0 py-5 md:py-7">
       <a
-        href="https://telliancapital.vercel.app/de"
+        href="https://telliancapital.ch/de"
         style={linkStyle}
         onMouseEnter={(e) => (e.currentTarget.style.color = C.dark)}
         onMouseLeave={(e) => (e.currentTarget.style.color = C.stone)}
