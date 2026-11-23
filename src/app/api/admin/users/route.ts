@@ -1,12 +1,80 @@
 import { NextResponse } from "next/server";
 import {
-  AdminListGroupsForUserCommand,
   AdminGetUserCommand,
   ListUsersCommand,
+  ListUsersInGroupCommand,
+  type AttributeType,
+  type UserType,
 } from "@aws-sdk/client-cognito-identity-provider";
-import { cognito, getUserPoolId } from "@/lib/cognito";
+import { VALID_GROUPS, cognito, getUserPoolId } from "@/lib/cognito";
 import { requireApiAdminOrInternal } from "@/lib/dal";
-import { readActivationState, type ActivationState } from "@/lib/activation";
+import { readActivationState } from "@/lib/activation";
+
+/* Cognito returns at most 60 users per call. */
+const PAGE_SIZE = 60;
+/* Parallel per-user lookups — kept low so a large directory does not run
+   into the request quota. */
+const DETAIL_CONCURRENCY = 20;
+const MFA_FLAG_ATTRIBUTES = ["nickname", "profile", "website"];
+
+async function listAllUsers(): Promise<UserType[]> {
+  const users: UserType[] = [];
+  let token: string | undefined;
+  do {
+    const page = await cognito.send(
+      new ListUsersCommand({
+        UserPoolId: getUserPoolId(),
+        Limit: PAGE_SIZE,
+        PaginationToken: token,
+      }),
+    );
+    users.push(...(page.Users ?? []));
+    token = page.PaginationToken;
+  } while (token);
+  return users;
+}
+
+/* username → groups, from one listing per group instead of one call per user. */
+async function listGroupMembership(): Promise<Map<string, string[]>> {
+  const membership = new Map<string, string[]>();
+  await Promise.all(
+    VALID_GROUPS.map(async (group) => {
+      let token: string | undefined;
+      do {
+        const page = await cognito.send(
+          new ListUsersInGroupCommand({
+            UserPoolId: getUserPoolId(),
+            GroupName: group,
+            Limit: PAGE_SIZE,
+            NextToken: token,
+          }),
+        );
+        for (const u of page.Users ?? []) {
+          if (!u.Username) continue;
+          membership.set(u.Username, [...(membership.get(u.Username) ?? []), group]);
+        }
+        token = page.NextToken;
+      } while (token);
+    }),
+  );
+  return membership;
+}
+
+/* Whether a TOTP device is active is only returned by AdminGetUser. */
+async function hasActiveTotp(username: string): Promise<boolean> {
+  try {
+    const user = await cognito.send(
+      new AdminGetUserCommand({ UserPoolId: getUserPoolId(), Username: username }),
+    );
+    return (
+      (user.UserMFASettingList ?? []).includes("SOFTWARE_TOKEN_MFA") ||
+      user.PreferredMfaSetting === "SOFTWARE_TOKEN_MFA"
+    );
+  } catch (err) {
+    console.warn(`Failed to fetch MFA details for user ${username}`, err);
+    return false;
+  }
+}
 
 export async function GET() {
   const auth = await requireApiAdminOrInternal();
@@ -15,114 +83,44 @@ export async function GET() {
   }
 
   try {
-    const list = await cognito.send(
-      new ListUsersCommand({
-        UserPoolId: getUserPoolId(),
-        Limit: 60,
-      }),
-    );
+    const [list, membership] = await Promise.all([listAllUsers(), listGroupMembership()]);
 
-    const users = await Promise.all(
-      (list.Users ?? []).map(async (u) => {
-        const username = u.Username ?? "";
-        let groups: string[] = [];
-        let mfaEnabled = false;
-        let firstName: string | undefined;
-        let lastName: string | undefined;
-        let email: string | undefined;
-        let phoneNumber: string | undefined;
-        let profileImageKey: string | undefined;
-        let street: string | undefined;
-        let city: string | undefined;
-        let zipCode: string | undefined;
-        let assignedRm: string | undefined;
-        let activation: ActivationState | null = null;
+    const totp: boolean[] = [];
+    for (let i = 0; i < list.length; i += DETAIL_CONCURRENCY) {
+      const batch = list.slice(i, i + DETAIL_CONCURRENCY);
+      totp.push(...(await Promise.all(batch.map((u) => hasActiveTotp(u.Username ?? "")))));
+    }
 
-        try {
-          const [groupsData, userData] = await Promise.all([
-            cognito.send(
-              new AdminListGroupsForUserCommand({
-                UserPoolId: getUserPoolId(),
-                Username: username,
-              }),
-            ),
-            cognito.send(
-              new AdminGetUserCommand({
-                UserPoolId: getUserPoolId(),
-                Username: username,
-              }),
-            ),
-          ]);
+    const users = list.map((u, index) => {
+      const username = u.Username ?? "";
+      const attributes: AttributeType[] = u.Attributes ?? [];
+      const find = (name: string) => attributes.find((a) => a.Name === name)?.Value;
+      // MFA counts as enabled with an active TOTP device or the admin flag.
+      const mfaFlag = attributes.some(
+        (a) => MFA_FLAG_ATTRIBUTES.includes(a.Name ?? "") && a.Value === "MFA_ENABLED",
+      );
 
-          groups = (groupsData.Groups ?? [])
-            .map((x) => x.GroupName)
-            .filter((x): x is string => Boolean(x));
-
-          // Check if MFA is enabled in UserMFASettingList, as a preference, or via our standard attribute flags
-          const attributes = ["nickname", "profile", "website"];
-          const mfaFlag = userData.UserAttributes?.some(a =>
-            attributes.includes(a.Name!) && a.Value === "MFA_ENABLED"
-          ) ?? false;
-          mfaEnabled =
-            (userData.UserMFASettingList ?? []).includes("SOFTWARE_TOKEN_MFA") ||
-            userData.PreferredMfaSetting === "SOFTWARE_TOKEN_MFA" ||
-            mfaFlag;
-
-          firstName = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:firstName",
-          )?.Value;
-          lastName = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:lastName",
-          )?.Value;
-          email = userData.UserAttributes?.find(
-            (a) => a.Name === "email",
-          )?.Value;
-          phoneNumber = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:phoneNumber",
-          )?.Value;
-          profileImageKey = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:profileImageKey",
-          )?.Value;
-          street = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:street",
-          )?.Value;
-          city = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:city",
-          )?.Value;
-          zipCode = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:zipCode",
-          )?.Value;
-          assignedRm = userData.UserAttributes?.find(
-            (a) => a.Name === "custom:assignedRm",
-          )?.Value;
-          activation = readActivationState(userData.UserAttributes);
-        } catch (err) {
-          console.warn(
-            `Failed to fetch extra details for user ${username}`,
-            err,
-          );
-        }
-
-        return {
-          username,
-          enabled: u.Enabled ?? false,
-          status: u.UserStatus ?? "UNKNOWN",
-          createdAt: u.UserCreateDate?.toISOString(),
-          groups,
-          mfaEnabled,
-          firstName,
-          lastName,
-          email,
-          phoneNumber,
-          profileImageKey,
-          street,
-          city,
-          zipCode,
-          assignedRm,
-          activation,
-        };
-      }),
-    );
+      return {
+        username,
+        enabled: u.Enabled ?? false,
+        status: u.UserStatus ?? "UNKNOWN",
+        createdAt: u.UserCreateDate?.toISOString(),
+        // Fixed order, so the role shown for a user never depends on which
+        // group listing came back first.
+        groups: VALID_GROUPS.filter((g) => membership.get(username)?.includes(g)),
+        mfaEnabled: totp[index] || mfaFlag,
+        firstName: find("custom:firstName"),
+        lastName: find("custom:lastName"),
+        email: find("email"),
+        phoneNumber: find("custom:phoneNumber"),
+        profileImageKey: find("custom:profileImageKey"),
+        street: find("custom:street"),
+        city: find("custom:city"),
+        zipCode: find("custom:zipCode"),
+        assignedRm: find("custom:assignedRm"),
+        activation: readActivationState(attributes),
+      };
+    });
 
     return NextResponse.json({ users });
   } catch (err) {
