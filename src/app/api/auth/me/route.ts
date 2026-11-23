@@ -37,9 +37,18 @@ export async function GET() {
   let zipCode: string | null = null;
   let assignedRm: string | null = null;
   try {
-    const user = await cognito.send(
-      new GetUserCommand({ AccessToken: session.accessToken }),
-    );
+    // While impersonating, the access token still belongs to the staff
+    // member — read the impersonated user's profile from the directory.
+    const user = session.impersonatedBy
+      ? await cognito.send(
+          new AdminGetUserCommand({
+            UserPoolId: getUserPoolId(),
+            Username: session.username,
+          }),
+        )
+      : await cognito.send(
+          new GetUserCommand({ AccessToken: session.accessToken }),
+        );
 
     // mfaEnabled = MFA is actually set up in Cognito (TOTP verified).
     mfaEnabled =
