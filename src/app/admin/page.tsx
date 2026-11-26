@@ -47,9 +47,16 @@ type ConfirmAction =
   | { type: "activate"; user: AdminUser }
   | { type: "resetPassword"; user: AdminUser }
   | { type: "resendActivation"; user: AdminUser }
-  | { type: "impersonate"; user: AdminUser };
+  | { type: "impersonate"; user: AdminUser }
+  | { type: "bulkResend"; users: AdminUser[]; skipped: number };
 
 type AccountStatus = "active" | "pending" | "inactive";
+const ACCOUNT_STATUSES: AccountStatus[] = ["active", "pending", "inactive"];
+
+/* Fallback when a response carries no TTL — matches the server default. */
+const DEFAULT_TTL_HOURS = 168;
+/* Parallel resend requests during a bulk send. */
+const BULK_CONCURRENCY = 3;
 
 /* Activation link result (create / resend) — shown once in a dialog. */
 interface ActivationResult {
@@ -93,6 +100,31 @@ function getAccountStatus(u: AdminUser): AccountStatus {
   if (!u.enabled) return "inactive";
   if (u.status === "FORCE_CHANGE_PASSWORD") return "pending";
   return "active";
+}
+
+function statusLabel(status: AccountStatus, t: T): string {
+  return status === "active"
+    ? t("admin.status.enabled")
+    : status === "pending"
+      ? t("admin.status.pending")
+      : t("admin.status.disabled");
+}
+
+/* Same rules as /api/admin/resend-activation. */
+function canReceiveActivation(u: AdminUser): boolean {
+  return (
+    getRole(u) === "User" &&
+    u.enabled &&
+    u.activation?.stage !== "completed" &&
+    Boolean(u.email)
+  );
+}
+
+/* "7 days" for whole days, hours otherwise. */
+function formatTtl(hours: number, t: T): string {
+  return hours >= 48 && hours % 24 === 0
+    ? t("admin.ttl.days", { n: hours / 24 })
+    : t("admin.ttl.hours", { n: hours });
 }
 
 function roleLabel(role: Role, t: T): string {
@@ -269,6 +301,10 @@ function AdminContent() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<AccountStatus[]>([]);
+  /* Usernames ticked for a bulk action — kept across pages and filters. */
+  const [selectedUsernames, setSelectedUsernames] = useState<Set<string>>(() => new Set());
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -327,8 +363,36 @@ function AdminContent() {
       (u.email ?? "").toLowerCase().includes(term);
     const matchesRole =
       selectedRoles.length === 0 || selectedRoles.includes(getRole(u));
-    return matchesSearch && matchesRole;
+    const matchesStatus =
+      selectedStatuses.length === 0 || selectedStatuses.includes(getAccountStatus(u));
+    return matchesSearch && matchesRole && matchesStatus;
   });
+
+  const selectedUsers = users.filter((u) => selectedUsernames.has(u.username));
+  const allFilteredSelected =
+    filteredUsers.length > 0 && filteredUsers.every((u) => selectedUsernames.has(u.username));
+  const someFilteredSelected = filteredUsers.some((u) => selectedUsernames.has(u.username));
+
+  function toggleSelected(username: string) {
+    setSelectedUsernames((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) next.delete(username);
+      else next.add(username);
+      return next;
+    });
+  }
+
+  /* Header checkbox: covers every user matching the filters, on all pages. */
+  function toggleSelectAllFiltered() {
+    setSelectedUsernames((prev) => {
+      const next = new Set(prev);
+      for (const u of filteredUsers) {
+        if (allFilteredSelected) next.delete(u.username);
+        else next.add(u.username);
+      }
+      return next;
+    });
+  }
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize);
   const paginatedUsers = filteredUsers.slice(
@@ -338,7 +402,7 @@ function AdminContent() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedRoles]);
+  }, [searchTerm, selectedRoles, selectedStatuses]);
 
   async function handleChangeRole(u: AdminUser, newRole: Role) {
     const res = await fetch("/api/admin/change-role", {
@@ -433,8 +497,63 @@ function AdminContent() {
       email: data.email ?? u.email ?? "",
       link: data.activationLink ?? null,
       emailStatus: data.activationEmail ?? "NOT_SENT",
-      ttlHours: data.ttlHours ?? 48,
+      ttlHours: data.ttlHours ?? DEFAULT_TTL_HOURS,
     });
+    void loadUsers();
+  }
+
+  function requestBulkResend() {
+    const eligible = selectedUsers.filter(canReceiveActivation);
+    if (eligible.length === 0) {
+      toast.error(t("admin.toast.bulkNoneEligible"));
+      return;
+    }
+    setConfirm({
+      type: "bulkResend",
+      users: eligible,
+      skipped: selectedUsers.length - eligible.length,
+    });
+  }
+
+  /* One request per user through the single-resend route, a few at a time.
+     Users whose email went out are unticked; failures stay selected. */
+  async function handleBulkResend(targets: AdminUser[]) {
+    setError(null);
+    setBulkProgress({ done: 0, total: targets.length });
+    const sentUsernames: string[] = [];
+    let next = 0;
+    async function worker() {
+      while (next < targets.length) {
+        const u = targets[next++];
+        try {
+          const res = await fetch("/api/admin/resend-activation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: u.username }),
+          });
+          const data = (await res.json().catch(() => ({}))) as {
+            activationEmail?: ActivationResult["emailStatus"];
+          };
+          if (res.ok && data.activationEmail === "SENT") sentUsernames.push(u.username);
+        } catch {
+          // Counted as failed below.
+        }
+        setBulkProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(BULK_CONCURRENCY, targets.length) }, worker),
+    );
+
+    const failed = targets.length - sentUsernames.length;
+    if (failed === 0) toast.success(t("admin.toast.bulkResent", { sent: sentUsernames.length }));
+    else toast.error(t("admin.toast.bulkResentPartial", { sent: sentUsernames.length, failed }));
+    setSelectedUsernames((prev) => {
+      const remaining = new Set(prev);
+      for (const username of sentUsernames) remaining.delete(username);
+      return remaining;
+    });
+    setBulkProgress(null);
     void loadUsers();
   }
 
@@ -470,6 +589,13 @@ function AdminContent() {
 
   async function handleConfirm() {
     if (!confirm) return;
+    if (confirm.type === "bulkResend") {
+      // Runs long for big selections — progress shows in the selection bar.
+      const targets = confirm.users;
+      setConfirm(null);
+      void handleBulkResend(targets);
+      return;
+    }
     const { type, user: target } = confirm;
     setConfirmBusy(true);
     try {
@@ -484,7 +610,9 @@ function AdminContent() {
   }
 
   const confirmTitle = confirm
-    ? confirm.type === "deactivate"
+    ? confirm.type === "bulkResend"
+      ? t("admin.confirm.bulkResendTitle")
+      : confirm.type === "deactivate"
       ? t("admin.confirm.deactivateTitle")
       : confirm.type === "activate"
         ? t("admin.confirm.activateTitle")
@@ -495,7 +623,14 @@ function AdminContent() {
             : t("admin.confirm.impersonateTitle")
     : "";
   const confirmBody = confirm
-    ? confirm.type === "deactivate"
+    ? confirm.type === "bulkResend"
+      ? [
+          t("admin.confirm.bulkResendBody", { count: confirm.users.length }),
+          ...(confirm.skipped > 0
+            ? [t("admin.confirm.bulkResendSkipped", { skipped: confirm.skipped })]
+            : []),
+        ].join(" ")
+      : confirm.type === "deactivate"
       ? t("admin.confirm.deactivateBody", { id: getDisplayId(confirm.user) })
       : confirm.type === "activate"
         ? t("admin.confirm.activateBody", { id: getDisplayId(confirm.user) })
@@ -528,6 +663,10 @@ function AdminContent() {
       canImpersonateRow: canImpersonateUsers && !isSelf && u.enabled && role !== "Admin",
       canResendRow:
         canManageUsers && role === "User" && u.enabled && u.activation?.stage !== "completed",
+      selectable: canManageUsers,
+      selected: selectedUsernames.has(u.username),
+      selectDisabled: bulkProgress !== null,
+      onSelect: () => toggleSelected(u.username),
       onEdit: () => setEditingUser(u),
       onToggle: () => setConfirm({ type: u.enabled ? "deactivate" : "activate", user: u }),
       onToggleMfa: () => handleToggleMfa(u),
@@ -637,8 +776,49 @@ function AdminContent() {
             onBlur={(e) => (e.currentTarget.style.borderBottomColor = C.line)}
           />
         </div>
-        <RoleFilterDropdown selectedRoles={selectedRoles} onChange={setSelectedRoles} t={t} />
+        <FilterDropdown
+          options={ROLES.map((r) => ({ value: r, label: roleLabel(r, t) }))}
+          selected={selectedRoles}
+          onChange={setSelectedRoles}
+          allLabel={t("admin.filter.role.all")}
+          ariaLabel={t("admin.filter.role.label")}
+        />
+        <FilterDropdown
+          options={ACCOUNT_STATUSES.map((s) => ({ value: s, label: statusLabel(s, t) }))}
+          selected={selectedStatuses}
+          onChange={setSelectedStatuses}
+          allLabel={t("admin.filter.status.all")}
+          ariaLabel={t("admin.filter.status.label")}
+        />
       </div>
+
+      {/* ── BULK SELECTION BAR ── */}
+      {canManageUsers && selectedUsers.length > 0 && (
+        <div className="px-5 pb-6 md:px-[clamp(32px,4vw,64px)]">
+          <div
+            className="flex flex-wrap items-center gap-4"
+            style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: "12px 16px" }}
+          >
+            <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 500, color: C.dark }}>
+              {t("admin.bulk.selected", { count: selectedUsers.length })}
+            </span>
+            <button
+              onClick={requestBulkResend}
+              disabled={bulkProgress !== null}
+              style={actionBtnStyle(bulkProgress !== null)}
+            >
+              {bulkProgress ? t("admin.bulk.sending", bulkProgress) : t("admin.bulk.send")}
+            </button>
+            <button
+              onClick={() => setSelectedUsernames(new Set())}
+              disabled={bulkProgress !== null}
+              style={actionBtnStyle(bulkProgress !== null)}
+            >
+              {t("admin.bulk.clear")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── TABLE / CARDS — loading, error, empty, loaded ── */}
       <div className="px-5 pb-12 md:px-[clamp(32px,4vw,64px)]">
@@ -679,6 +859,28 @@ function AdminContent() {
           <>
             {/* MOBILE / TABLET (<1024): cards */}
             <div className="flex flex-col gap-4 lg:hidden">
+              {canManageUsers && (
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontFamily: sans,
+                    fontSize: 13,
+                    color: C.dark,
+                    cursor: "pointer",
+                  }}
+                >
+                  <SelectCheckbox
+                    checked={allFilteredSelected}
+                    indeterminate={someFilteredSelected && !allFilteredSelected}
+                    disabled={bulkProgress !== null}
+                    onChange={toggleSelectAllFiltered}
+                    label={t("admin.bulk.selectAll")}
+                  />
+                  {t("admin.bulk.selectAll")} ({filteredUsers.length})
+                </label>
+              )}
               {paginatedUsers.map((u) => (
                 <UserCard key={u.username} {...rowProps(u)} showActions={showActionsColumn} />
               ))}
@@ -689,6 +891,17 @@ function AdminContent() {
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
                 <thead>
                   <tr style={{ borderBottom: `1.5px solid ${C.dark}` }}>
+                    {canManageUsers && (
+                      <th scope="col" style={{ padding: "12px 16px 12px 0", width: 32, textAlign: "left" }}>
+                        <SelectCheckbox
+                          checked={allFilteredSelected}
+                          indeterminate={someFilteredSelected && !allFilteredSelected}
+                          disabled={bulkProgress !== null}
+                          onChange={toggleSelectAllFiltered}
+                          label={`${t("admin.bulk.selectAll")} (${filteredUsers.length})`}
+                        />
+                      </th>
+                    )}
                     {[
                       t("admin.col.id"),
                       t("admin.col.role"),
@@ -823,7 +1036,11 @@ function ActivationLinkDialog({
   onClose: () => void;
   t: T;
 }) {
-  const vars = { id: result.username, email: result.email, hours: result.ttlHours };
+  const vars = {
+    id: result.username,
+    email: result.email,
+    validity: formatTtl(result.ttlHours, t),
+  };
   return (
     <CredentialsDialog
       title={title}
@@ -851,6 +1068,10 @@ interface RowProps {
   canImpersonate: boolean;
   canImpersonateRow: boolean;
   canResendRow: boolean;
+  selectable: boolean;
+  selected: boolean;
+  selectDisabled: boolean;
+  onSelect: () => void;
   showActions: boolean;
   onEdit: () => void;
   onToggle: () => void;
@@ -893,6 +1114,16 @@ function UserTableRow(props: RowProps) {
   const td: React.CSSProperties = { padding: "14px 16px 14px 0", verticalAlign: "middle" };
   return (
     <tr style={{ borderBottom: `1px solid ${C.line}` }}>
+      {props.selectable && (
+        <td style={td}>
+          <SelectCheckbox
+            checked={props.selected}
+            disabled={props.selectDisabled}
+            onChange={props.onSelect}
+            label={`${props.t("admin.bulk.selectRow")}: ${getDisplayId(user)}`}
+          />
+        </td>
+      )}
       <td style={td}>
         <span style={{ fontFamily: sans, fontSize: 13, fontWeight: 500, color: C.dark, display: "block" }}>
           {getDisplayId(user)}
@@ -937,13 +1168,25 @@ function UserCard(props: RowProps) {
   };
   return (
     <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 20, backgroundColor: C.bg }}>
-      <div style={{ marginBottom: 12 }}>
-        <span style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.dark, display: "block" }}>
-          {getDisplayId(user)}
-        </span>
-        <span style={{ fontFamily: sans, fontSize: 13, color: C.stone, display: "block", marginTop: 2 }}>
-          {getDisplayName(user)}
-        </span>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+        {props.selectable && (
+          <span style={{ paddingTop: 2 }}>
+            <SelectCheckbox
+              checked={props.selected}
+              disabled={props.selectDisabled}
+              onChange={props.onSelect}
+              label={`${t("admin.bulk.selectRow")}: ${getDisplayId(user)}`}
+            />
+          </span>
+        )}
+        <div>
+          <span style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: C.dark, display: "block" }}>
+            {getDisplayId(user)}
+          </span>
+          <span style={{ fontFamily: sans, fontSize: 13, color: C.stone, display: "block", marginTop: 2 }}>
+            {getDisplayName(user)}
+          </span>
+        </div>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", marginBottom: showActions ? 16 : 0 }}>
         <div>
@@ -1069,11 +1312,7 @@ function StatusBadge({ user, t }: { user: AdminUser; t: T }) {
         </svg>
       )}
       <span style={{ fontFamily: sans, fontSize: 13, color: C.dark }}>
-        {status === "active"
-          ? t("admin.status.enabled")
-          : status === "pending"
-            ? t("admin.status.pending")
-            : t("admin.status.disabled")}
+        {statusLabel(status, t)}
       </span>
       {status === "pending" && (
         <span style={{ fontFamily: sans, fontSize: 10, color: C.warning, fontWeight: 500, marginLeft: 4 }}>
@@ -1162,17 +1401,56 @@ function MfaBadge({ user, t }: { user: AdminUser; t: T }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   ROLE FILTER (multi-select) — styled like the design selects
+   FILTER DROPDOWN (multi-select; role + status) — styled like
+   the design selects
    ═══════════════════════════════════════════════════════════ */
 
-function RoleFilterDropdown({
-  selectedRoles,
+function SelectCheckbox({
+  checked,
+  indeterminate = false,
+  disabled = false,
   onChange,
-  t,
+  label,
 }: {
-  selectedRoles: Role[];
-  onChange: (roles: Role[]) => void;
-  t: T;
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      aria-label={label}
+      ref={(el) => {
+        if (el) el.indeterminate = indeterminate;
+      }}
+      style={{
+        width: 16,
+        height: 16,
+        margin: 0,
+        cursor: disabled ? "not-allowed" : "pointer",
+        accentColor: C.purple,
+      }}
+    />
+  );
+}
+
+function FilterDropdown<V extends string>({
+  options,
+  selected,
+  onChange,
+  allLabel,
+  ariaLabel,
+}: {
+  options: { value: V; label: string }[];
+  selected: V[];
+  onChange: (values: V[]) => void;
+  allLabel: string;
+  ariaLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1193,18 +1471,21 @@ function RoleFilterDropdown({
     };
   }, [open]);
 
-  function toggleRole(role: Role) {
+  function toggle(value: V) {
     onChange(
-      selectedRoles.includes(role)
-        ? selectedRoles.filter((r) => r !== role)
-        : [...selectedRoles, role],
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value],
     );
   }
 
   const label =
-    selectedRoles.length === 0
-      ? t("admin.filter.role.all")
-      : selectedRoles.map((r) => roleLabel(r, t)).join(", ");
+    selected.length === 0
+      ? allLabel
+      : options
+          .filter((o) => selected.includes(o.value))
+          .map((o) => o.label)
+          .join(", ");
 
   return (
     <div ref={containerRef} style={{ position: "relative", minWidth: 220 }}>
@@ -1213,7 +1494,7 @@ function RoleFilterDropdown({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={t("admin.filter.role.label")}
+        aria-label={ariaLabel}
         style={{
           ...selectStyle,
           minHeight: 40,
@@ -1244,11 +1525,11 @@ function RoleFilterDropdown({
             padding: 4,
           }}
         >
-          {ROLES.map((role) => {
-            const checked = selectedRoles.includes(role);
+          {options.map(({ value, label: optionLabel }) => {
+            const checked = selected.includes(value);
             return (
               <label
-                key={role}
+                key={value}
                 role="option"
                 aria-selected={checked}
                 style={{
@@ -1267,10 +1548,10 @@ function RoleFilterDropdown({
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={() => toggleRole(role)}
+                  onChange={() => toggle(value)}
                   style={{ cursor: "pointer", accentColor: C.purple }}
                 />
-                {roleLabel(role, t)}
+                {optionLabel}
               </label>
             );
           })}
@@ -1513,7 +1794,7 @@ function CreateUserModal({
             email: email.trim(),
             link: data.activationLink ?? null,
             emailStatus: data.activationEmail ?? "NOT_SENT",
-            ttlHours: data.ttlHours ?? 48,
+            ttlHours: data.ttlHours ?? DEFAULT_TTL_HOURS,
           },
         });
       }

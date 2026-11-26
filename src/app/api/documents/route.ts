@@ -3,6 +3,9 @@ import { requireApiSession } from "@/lib/dal";
 import { listObjectsPage, presignDownload } from "@/lib/s3";
 
 const ROOT_PREFIX = "reports/";
+/* Shared documents shown to every customer. The double slash is the
+   actual key prefix in the bucket, not a typo. */
+const GENERAL_PREFIX = "General//";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
@@ -16,6 +19,48 @@ export interface DocumentItem {
   fileSize: string;
   lastModified: string | null;
   downloadUrl: string;
+  /** Shared file from the General folder (not a customer report). */
+  isGeneral?: boolean;
+}
+
+/* All PDFs in the General folder. Never throws — a missing permission or
+   an empty folder must not hide the customer's own reports. */
+async function listGeneralDocuments(): Promise<DocumentItem[]> {
+  try {
+    const keys: { key: string; size: number; lastModified?: Date }[] = [];
+    let cursor: string | null = null;
+    do {
+      const page = await listObjectsPage(GENERAL_PREFIX, { cursor, maxKeys: MAX_LIMIT });
+      for (const o of page.objects) {
+        const key = o.Key as string;
+        if (!key.toLowerCase().endsWith(".pdf")) continue;
+        keys.push({ key, size: o.Size ?? 0, lastModified: o.LastModified });
+      }
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    return await Promise.all(
+      keys.map(async ({ key, size, lastModified }) => {
+        const filename = key.slice(key.lastIndexOf("/") + 1);
+        return {
+          id: key,
+          key,
+          customerId: "",
+          filename,
+          title: deriveTitle(filename),
+          fileFormat: deriveFormat(filename),
+          fileSize: formatBytes(size),
+          lastModified: lastModified ? new Date(lastModified).toISOString() : null,
+          downloadUrl: await presignDownload(key),
+          isGeneral: true,
+        };
+      }),
+    );
+  } catch (err) {
+    const e = err as { name?: string; message?: string };
+    console.error("General documents list error:", { name: e?.name, message: e?.message });
+    return [];
+  }
 }
 
 function formatBytes(bytes: number): string {
@@ -66,12 +111,13 @@ export async function GET(request: Request) {
   const limit = parseLimit(url.searchParams.get("limit"));
 
   try {
-    const { objects, nextCursor } = await listObjectsPage(prefix, {
-      cursor,
-      maxKeys: limit,
-    });
+    // General files go to customers only, once, with the first page.
+    const [{ objects, nextCursor }, general] = await Promise.all([
+      listObjectsPage(prefix, { cursor, maxKeys: limit }),
+      !isAdmin && !cursor ? listGeneralDocuments() : Promise.resolve([]),
+    ]);
 
-    const documents: DocumentItem[] = await Promise.all(
+    const reports: DocumentItem[] = await Promise.all(
       objects.map(async (o) => {
         const key = o.Key as string;
         const relative = key.slice(ROOT_PREFIX.length);
@@ -93,6 +139,8 @@ export async function GET(request: Request) {
         };
       }),
     );
+
+    const documents = [...general, ...reports];
 
     return NextResponse.json({ documents, nextCursor, isAdmin });
   } catch (err) {

@@ -57,7 +57,7 @@ export interface ActivationState {
   lastLoginAt: string | null;
 }
 
-const DEFAULT_TTL_HOURS = 48;
+const DEFAULT_TTL_HOURS = 168; // 7 days
 
 export function getActivationTtlHours(): number {
   const raw = Number(process.env.ACTIVATION_LINK_TTL_HOURS);

@@ -91,6 +91,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const ttlHours = getActivationTtlHours();
     const { secret, tokenHash, expiresAt } = issueActivationSecret();
     const link = buildActivationLink(sub, secret, new URL(request.url).origin);
 
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
       to: email,
       name,
       link,
-      ttlHours: getActivationTtlHours(),
+      ttlHours,
     });
     const emailStatus = result.sent
       ? "SENT"
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
       activationLink: link,
       activationEmail: emailStatus,
       expiresAt,
+      ttlHours,
     });
   } catch (err) {
     if (err instanceof UserNotFoundException) {
