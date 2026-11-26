@@ -259,12 +259,44 @@ const translations = {
     en: "Activation link for {id} created.",
   },
   "admin.created.customerBody": {
-    de: "Der Aktivierungslink für {id} wurde per E-Mail an {email} gesendet. Er ist einmalig und {hours} Stunden gültig.",
-    en: "The activation link for {id} has been emailed to {email}. It can be used once and is valid for {hours} hours.",
+    de: "Der Aktivierungslink für {id} wurde per E-Mail an {email} gesendet. Er ist einmalig und {validity} gültig.",
+    en: "The activation link for {id} has been emailed to {email}. It can be used once and is valid for {validity}.",
   },
   "admin.created.customerBodyNotSent": {
-    de: "Der Aktivierungslink für {id} konnte nicht per E-Mail versendet werden. Senden Sie ihn dem Mandanten über einen sicheren Kanal. Er ist einmalig und {hours} Stunden gültig.",
-    en: "The activation link for {id} could not be emailed. Send it to the client through a secure channel. It can be used once and is valid for {hours} hours.",
+    de: "Der Aktivierungslink für {id} konnte nicht per E-Mail versendet werden. Senden Sie ihn dem Mandanten über einen sicheren Kanal. Er ist einmalig und {validity} gültig.",
+    en: "The activation link for {id} could not be emailed. Send it to the client through a secure channel. It can be used once and is valid for {validity}.",
+  },
+  "admin.ttl.days": { de: "{n} Tage", en: "{n} days" },
+  "admin.ttl.hours": { de: "{n} Stunden", en: "{n} hours" },
+  "admin.bulk.selected": { de: "{count} ausgewählt", en: "{count} selected" },
+  "admin.bulk.selectAll": { de: "Alle auswählen", en: "Select all" },
+  "admin.bulk.selectRow": { de: "Auswählen", en: "Select" },
+  "admin.bulk.clear": { de: "Auswahl aufheben", en: "Clear selection" },
+  "admin.bulk.send": { de: "Aktivierungslink senden", en: "Send activation link" },
+  "admin.bulk.sending": { de: "Wird gesendet… {done}/{total}", en: "Sending… {done}/{total}" },
+  "admin.confirm.bulkResendTitle": {
+    de: "Aktivierungslinks senden",
+    en: "Send activation links",
+  },
+  "admin.confirm.bulkResendBody": {
+    de: "Für {count} Mandanten wird ein neuer Link erstellt und per E-Mail versendet. Bisherige Links verlieren sofort ihre Gültigkeit.",
+    en: "A new link will be created and emailed for {count} clients. Previous links stop working immediately.",
+  },
+  "admin.confirm.bulkResendSkipped": {
+    de: "{skipped} ausgewählte Benutzer werden übersprungen (kein Mandant, inaktiv, bereits aktiviert oder ohne E-Mail).",
+    en: "{skipped} selected users will be skipped (not a client, inactive, already activated or no email).",
+  },
+  "admin.toast.bulkResent": {
+    de: "{sent} Aktivierungslinks gesendet.",
+    en: "{sent} activation links sent.",
+  },
+  "admin.toast.bulkResentPartial": {
+    de: "{sent} Aktivierungslinks gesendet, {failed} fehlgeschlagen.",
+    en: "{sent} activation links sent, {failed} failed.",
+  },
+  "admin.toast.bulkNoneEligible": {
+    de: "Keiner der ausgewählten Benutzer kann einen Aktivierungslink erhalten.",
+    en: "None of the selected users can receive an activation link.",
   },
   "admin.status.enabled": { de: "Aktiv", en: "Active" },
   "admin.status.pending": { de: "Ausstehend", en: "Pending" },
@@ -449,6 +481,11 @@ const translations = {
     en: "Filter by role",
   },
   "admin.filter.role.all": { de: "Alle Rollen", en: "All roles" },
+  "admin.filter.status.label": {
+    de: "Nach Status filtern",
+    en: "Filter by status",
+  },
+  "admin.filter.status.all": { de: "Alle Status", en: "All statuses" },
   "admin.pagination.info": {
     de: "Seite {current} von {total}",
     en: "Page {current} of {total}",

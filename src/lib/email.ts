@@ -82,6 +82,11 @@ export function sendActivationEmail({
 }: ActivationEmailInput): Promise<SendResult> {
   const safeName = escapeHtml(name);
   const safeLink = escapeHtml(link);
+  // Whole days read better than "168 Stunden"; anything else stays in hours.
+  const validity =
+    ttlHours >= 48 && ttlHours % 24 === 0
+      ? `${ttlHours / 24} Tagen`
+      : `${ttlHours} Stunden`;
   const subject = "Ihr Zugang zum Tellian Capital Kundenportal / Your Tellian Capital portal access";
 
   const text = [
@@ -95,7 +100,7 @@ export function sendActivationEmail({
     "",
     link,
     "",
-    `Bitte beachten Sie, dass der Aktivierungslink aus Sicherheitsgründen nur einmal verwendet werden kann und nach ${ttlHours} Stunden abläuft.`,
+    `Bitte beachten Sie, dass der Aktivierungslink aus Sicherheitsgründen nur einmal verwendet werden kann und nach ${validity} abläuft.`,
     "",
     "Falls Sie Fragen haben oder bei der Aktivierung Schwierigkeiten auftreten, stehen wir Ihnen gerne zur Verfügung. Sie können sich selbstverständlich auch direkt telefonisch an Ihren persönlichen Kundenberater wenden.",
     "",
@@ -124,7 +129,7 @@ export function sendActivationEmail({
             <a href="${safeLink}" style="display:inline-block;background:#281F33;color:#F4F4F0;text-decoration:none;font-size:12px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;padding:16px 32px;">Zugang aktivieren →</a>
           </td></tr>
           <tr><td style="padding:16px 40px 0;font-size:15px;line-height:1.6;">
-            <p style="margin:0 0 12px;">Bitte beachten Sie, dass der Aktivierungslink aus Sicherheitsgründen nur einmal verwendet werden kann und nach ${ttlHours} Stunden abläuft.</p>
+            <p style="margin:0 0 12px;">Bitte beachten Sie, dass der Aktivierungslink aus Sicherheitsgründen nur einmal verwendet werden kann und nach ${validity} abläuft.</p>
           </td></tr>
           <tr><td style="padding:0 40px 24px;font-size:13px;line-height:1.6;color:#68635A;">
             <p style="margin:0;">Sollte die Schaltfläche nicht funktionieren, können Sie den folgenden Link kopieren und direkt in Ihrem Browser öffnen:</p>

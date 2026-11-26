@@ -30,6 +30,7 @@ interface Document {
   fileSize: string;
   lastModified: string | null;
   downloadUrl: string;
+  isGeneral?: boolean;
 }
 
 interface DocumentsResponse {
@@ -133,7 +134,11 @@ export default function DocumentsPage() {
       for (const doc of data.documents ?? []) {
         all.push({
           ...doc,
-          lastModified: extractDateFromFilename(doc.filename),
+          // General files may carry no date in the name — fall back to
+          // the upload date.
+          lastModified:
+            extractDateFromFilename(doc.filename) ??
+            (doc.isGeneral ? doc.lastModified : null),
         });
       }
       cursor = data.nextCursor ?? null;
@@ -177,6 +182,8 @@ export default function DocumentsPage() {
   const sortedDocuments = useMemo(() => {
     const list = [...filteredDocuments];
     list.sort((a, b) => {
+      // Shared General documents stay on top, whatever the sort order.
+      if (Boolean(a.isGeneral) !== Boolean(b.isGeneral)) return a.isGeneral ? -1 : 1;
       switch (sortKey) {
         case "newest":
           return (b.lastModified ?? "").localeCompare(a.lastModified ?? "");
